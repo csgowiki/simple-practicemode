@@ -241,7 +241,6 @@ Handle g_OnPracticeModeSettingsRead = INVALID_HANDLE;
 #include "practicemode/grenade_menus.sp"
 #include "practicemode/grenade_utils.sp"
 #include "practicemode/natives.sp"
-#include "practicemode/pugsetup_integration.sp"
 #include "practicemode/settings_menu.sp"
 #include "practicemode/spawns.sp"
 
@@ -299,9 +298,6 @@ public void OnPluginStart() {
   }
 
   {
-    RegAdminCmd("sm_prac", Command_LaunchPracticeMode, ADMFLAG_CHANGEMAP, "Launches practice mode");
-    PM_AddChatAlias(".prac", "sm_prac");
-
     RegAdminCmd("sm_practicemap", Command_Map, ADMFLAG_CHANGEMAP);
     PM_AddChatAlias(".map", "sm_practicemap");
 
