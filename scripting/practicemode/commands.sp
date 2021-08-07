@@ -1,22 +1,4 @@
-public Action Command_LaunchPracticeMode(int client, int args) {
-  if (!g_InPracticeMode) {
-    LaunchPracticeMode();
-  }
-  return Plugin_Handled;
-}
-
-public Action Command_ExitPracticeMode(int client, int args) {
-  if (g_InPracticeMode) {
-    ExitPracticeMode();
-  }
-  return Plugin_Handled;
-}
-
 public Action Command_NoFlash(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   g_ClientNoFlash[client] = !g_ClientNoFlash[client];
   if (g_ClientNoFlash[client]) {
     PM_Message(client, "Enabled noflash. Use .noflash again to disable.");
@@ -28,10 +10,6 @@ public Action Command_NoFlash(int client, int args) {
 }
 
 public Action Command_Time(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (!g_RunningTimeCommand[client]) {
     // Start command.
     PM_Message(client, "When you start moving a timer will run until you stop moving.");
@@ -47,10 +25,6 @@ public Action Command_Time(int client, int args) {
 }
 
 public Action Command_Time2(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (!g_RunningTimeCommand[client]) {
     // Start command.
     PM_Message(client, "Type .timer2 to stop the timer again.");
@@ -67,10 +41,6 @@ public Action Command_Time2(int client, int args) {
 }
 
 public Action Command_CountDown(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   float timer_duration = float(GetRoundTimeSeconds());
   char arg[PLATFORM_MAX_PATH];
   if (args >= 1 && GetCmdArg(1, arg, sizeof(arg))) {
@@ -134,10 +104,6 @@ public Action Timer_DisplayClientTimer(Handle timer, int serial) {
 }
 
 public Action Command_CopyGrenade(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (!IsPlayer(client) || args != 1) {
     PM_Message(client, "Usage: .copy <id>");
     return Plugin_Handled;
@@ -161,10 +127,6 @@ public Action Command_CopyGrenade(int client, int args) {
 }
 
 public Action Command_Respawn(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (!IsPlayerAlive(client)) {
     CS_RespawnPlayer(client);
     return Plugin_Handled;
@@ -180,46 +142,27 @@ public Action Command_Respawn(int client, int args) {
 }
 
 public Action Command_StopRespawn(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   g_SavedRespawnActive[client] = false;
   PM_Message(client, "Cancelled respawning at your saved position.");
   return Plugin_Handled;
 }
 
 public Action Command_Spec(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   FakeClientCommand(client, "jointeam 1");
   return Plugin_Handled;
 }
 
 public Action Command_JoinT(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   FakeClientCommand(client, "jointeam 2");
   return Plugin_Handled;
 }
 
 public Action Command_JoinCT(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   FakeClientCommand(client, "jointeam 3");
   return Plugin_Handled;
 }
 
 public Action Command_StopAll(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
   if (g_SavedRespawnActive[client]) {
     Command_StopRespawn(client, 0);
   }
@@ -242,10 +185,6 @@ public Action Command_StopAll(int client, int args) {
 }
 
 public Action Command_FastForward(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (g_FastfowardRequiresZeroVolumeCvar.IntValue != 0) {
     for (int i = 1; i <= MaxClients; i++) {
       if (IsPlayer(i) && g_ClientVolume[i] > 0.01) {
@@ -272,10 +211,6 @@ public Action Command_FastForward(int client, int args) {
 }
 
 public Action Timer_ResetTimescale(Handle timer) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   SetCvar("host_timescale", 1);
 
   for (int i = 1; i <= MaxClients; i++) {
@@ -287,10 +222,6 @@ public Action Timer_ResetTimescale(Handle timer) {
 }
 
 public Action Command_Repeat(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (args < 2) {
     PM_Message(client, "Usage: .repeat <interval in seconds> <any chat command>");
     return Plugin_Handled;
@@ -329,10 +260,6 @@ public Action Timer_RepeatCommand(Handle timer, int serial) {
 }
 
 public Action Command_RoundRepeat(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (args < 2) {
     PM_Message(client,
                "Usage: .roundrepeat <delay from round start in seconds> <any chat command>");
@@ -389,10 +316,6 @@ public Action Timer_RoundRepeatCommand(Handle timer, DataPack p) {
 }
 
 public Action Command_StopRepeat(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (g_RunningRepeatedCommand[client]) {
     g_RunningRepeatedCommand[client] = false;
     g_RunningRoundRepeatedCommandArg[client].Clear();
@@ -403,10 +326,6 @@ public Action Command_StopRepeat(int client, int args) {
 }
 
 public Action Command_Delay(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (args < 2) {
     PM_Message(client, "Usage: .delay <interval in seconds> <any chat command>");
     return Plugin_Handled;
@@ -492,10 +411,6 @@ public void ChangeSettingById(const char[] id, bool setting) {
 }
 
 public Action Command_DryRun(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   SetCvar("mp_freezetime", g_DryRunFreezeTimeCvar.IntValue);
   ChangeSettingById("allradar", false);
   ChangeSettingById("blockroundendings", false);
@@ -550,10 +465,6 @@ static void ChangeSettingArg(int client, const char[] arg, bool enabled) {
 }
 
 public Action Command_Enable(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   char arg[128];
   GetCmdArgString(arg, sizeof(arg));
   ChangeSettingArg(client, arg, true);
@@ -561,10 +472,6 @@ public Action Command_Enable(int client, int args) {
 }
 
 public Action Command_Disable(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   char arg[128];
   GetCmdArgString(arg, sizeof(arg));
   ChangeSettingArg(client, arg, false);
@@ -572,10 +479,6 @@ public Action Command_Disable(int client, int args) {
 }
 
 public Action Command_God(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (!GetCvarIntSafe("sv_cheats")) {
     PM_Message(client, ".god requires sv_cheats to be enabled.");
     return Plugin_Handled;
@@ -586,10 +489,6 @@ public Action Command_God(int client, int args) {
 }
 
 public Action Command_EndRound(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (!GetCvarIntSafe("sv_cheats")) {
     PM_Message(client, ".endround requires sv_cheats to be enabled.");
     return Plugin_Handled;
@@ -600,10 +499,6 @@ public Action Command_EndRound(int client, int args) {
 }
 
 public Action Command_Break(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   int ent = -1;
   while ((ent = FindEntityByClassname(ent, "func_breakable")) != -1) {
     AcceptEntityInput(ent, "Break");

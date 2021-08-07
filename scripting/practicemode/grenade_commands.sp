@@ -1,8 +1,4 @@
 public Action Command_LastGrenade(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   int index = g_GrenadeHistoryPositions[client].Length - 1;
   if (index >= 0) {
     TeleportToGrenadeHistoryPosition(client, index);
@@ -13,10 +9,6 @@ public Action Command_LastGrenade(int client, int args) {
 }
 
 public Action Command_NextGrenade(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   int nadeId = g_CurrentSavedGrenadeId[client];
   if (nadeId < 0) {
     return Plugin_Handled;
@@ -36,10 +28,6 @@ public Action Command_NextGrenade(int client, int args) {
 }
 
 public Action Command_GrenadeBack(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   char argString[64];
   if (args >= 1 && GetCmdArg(1, argString, sizeof(argString))) {
     int index = StringToInt(argString) - 1;
@@ -69,20 +57,12 @@ public Action Command_GrenadeBack(int client, int args) {
 }
 
 public Action Command_SavePos(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   AddGrenadeToHistory(client);
   PM_Message(client, "Saved position. Use .back to go back to it.");
   return Plugin_Handled;
 }
 
 public Action Command_GrenadeForward(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (g_GrenadeHistoryPositions[client].Length > 0) {
     int max = g_GrenadeHistoryPositions[client].Length;
     g_GrenadeHistoryIndex[client]++;
@@ -97,10 +77,6 @@ public Action Command_GrenadeForward(int client, int args) {
 }
 
 public Action Command_ClearNades(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   ClearArray(g_GrenadeHistoryPositions[client]);
   ClearArray(g_GrenadeHistoryAngles[client]);
   PM_Message(client, "Grenade history cleared.");
@@ -109,10 +85,6 @@ public Action Command_ClearNades(int client, int args) {
 }
 
 public Action Command_GotoNade(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   char arg[GRENADE_ID_LENGTH];
   if (args >= 1 && GetCmdArg(1, arg, sizeof(arg))) {
     char id[GRENADE_ID_LENGTH];
@@ -128,10 +100,6 @@ public Action Command_GotoNade(int client, int args) {
 }
 
 public Action Command_Grenades(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   char arg[MAX_NAME_LENGTH];
   if (args >= 1 && GetCmdArgString(arg, sizeof(arg))) {
     ArrayList ids = new ArrayList(GRENADE_ID_LENGTH);
@@ -157,10 +125,6 @@ public Action Command_Grenades(int client, int args) {
 }
 
 public Action Command_Find(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   char arg[MAX_NAME_LENGTH];
   if (args >= 1 && GetCmdArgString(arg, sizeof(arg))) {
     GiveGrenadeMenu(client, GrenadeMenuType_MatchingName, 0, arg, null,
@@ -173,10 +137,6 @@ public Action Command_Find(int client, int args) {
 }
 
 public Action Command_GrenadeDescription(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   int nadeId = g_CurrentSavedGrenadeId[client];
   if (nadeId < 0) {
     return Plugin_Handled;
@@ -196,10 +156,6 @@ public Action Command_GrenadeDescription(int client, int args) {
 }
 
 public Action Command_RenameGrenade(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   int nadeId = g_CurrentSavedGrenadeId[client];
   if (nadeId < 0) {
     return Plugin_Handled;
@@ -219,10 +175,6 @@ public Action Command_RenameGrenade(int client, int args) {
 }
 
 public Action Command_DeleteGrenade(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   // get the grenade id first
   char grenadeIdStr[32];
   if (args < 1 || !GetCmdArg(1, grenadeIdStr, sizeof(grenadeIdStr))) {
@@ -241,10 +193,6 @@ public Action Command_DeleteGrenade(int client, int args) {
 }
 
 public Action Command_SaveGrenade(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   char name[GRENADE_NAME_LENGTH];
   GetCmdArgString(name, sizeof(name));
   TrimString(name);
@@ -328,10 +276,6 @@ public Action Command_SaveGrenade(int client, int args) {
 }
 
 public Action Command_MoveGrenade(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   int nadeId = g_CurrentSavedGrenadeId[client];
   if (nadeId < 0) {
     return Plugin_Handled;
@@ -357,10 +301,6 @@ public Action Command_MoveGrenade(int client, int args) {
 }
 
 public Action Command_SaveThrow(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (!g_CSUtilsLoaded) {
     PM_Message(client, "You need the csutils plugin installed to use that command.");
     return Plugin_Handled;
@@ -384,10 +324,6 @@ public Action Command_SaveThrow(int client, int args) {
 }
 
 public Action Command_UpdateGrenade(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   int nadeId = g_CurrentSavedGrenadeId[client];
   if (nadeId < 0) {
     return Plugin_Handled;
@@ -426,10 +362,6 @@ public Action Command_UpdateGrenade(int client, int args) {
 }
 
 public Action Command_SetDelay(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (!g_CSUtilsLoaded) {
     PM_Message(client, "You need the csutils plugin installed to use that command.");
     return Plugin_Handled;
@@ -459,10 +391,6 @@ public Action Command_SetDelay(int client, int args) {
 }
 
 public Action Command_ClearThrow(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (!g_CSUtilsLoaded) {
     PM_Message(client, "You need the csutils plugin installed to use that command.");
     return Plugin_Handled;
@@ -494,10 +422,6 @@ static void ClientThrowGrenade(int client, const char[] id, float delay = 0.0) {
 }
 
 public Action Command_Throw(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (!g_CSUtilsLoaded) {
     PM_Message(client, "You need the csutils plugin installed to use that command.");
     return Plugin_Handled;
@@ -568,10 +492,6 @@ public Action Command_Throw(int client, int args) {
 }
 
 public Action Command_TestFlash(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   g_TestingFlash[client] = true;
   PM_Message(
       client,
@@ -583,26 +503,19 @@ public Action Command_TestFlash(int client, int args) {
 }
 
 public Action Command_StopFlash(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   g_TestingFlash[client] = false;
   PM_Message(client, "Disabled flash testing.");
   return Plugin_Handled;
 }
 
 public Action Command_Categories(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
   GiveGrenadeMenu(client, GrenadeMenuType_Categories);
   return Plugin_Handled;
 }
 
 public Action Command_AddCategory(int client, int args) {
   int nadeId = g_CurrentSavedGrenadeId[client];
-  if (nadeId < 0 || !g_InPracticeMode || args < 1) {
+  if (nadeId < 0 || args < 1) {
     return Plugin_Handled;
   }
 
@@ -621,7 +534,7 @@ public Action Command_AddCategory(int client, int args) {
 
 public Action Command_AddCategories(int client, int args) {
   int nadeId = g_CurrentSavedGrenadeId[client];
-  if (nadeId < 0 || !g_InPracticeMode || args < 1) {
+  if (nadeId < 0 || args < 1) {
     return Plugin_Handled;
   }
 
@@ -642,7 +555,7 @@ public Action Command_AddCategories(int client, int args) {
 
 public Action Command_RemoveCategory(int client, int args) {
   int nadeId = g_CurrentSavedGrenadeId[client];
-  if (nadeId < 0 || !g_InPracticeMode) {
+  if (nadeId < 0) {
     return Plugin_Handled;
   }
 
@@ -687,7 +600,7 @@ public Action Command_DeleteCategory(int client, int args) {
 
 public Action Command_ClearGrenadeCategories(int client, int args) {
   int nadeId = g_CurrentSavedGrenadeId[client];
-  if (nadeId < 0 || !g_InPracticeMode) {
+  if (nadeId < 0) {
     return Plugin_Handled;
   }
 
@@ -703,10 +616,6 @@ public Action Command_ClearGrenadeCategories(int client, int args) {
 }
 
 public Action Command_TranslateGrenades(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (args != 3) {
     ReplyToCommand(client, "Usage: sm_translategrenades <dx> <dy> <dz>");
     return Plugin_Handled;
@@ -728,10 +637,6 @@ public Action Command_TranslateGrenades(int client, int args) {
 }
 
 public Action Command_FixGrenades(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   CorrectGrenadeIds();
   g_UpdatedGrenadeKv = true;
   ReplyToCommand(client, "Fixed grenade data.");

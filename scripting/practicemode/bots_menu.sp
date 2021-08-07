@@ -1,8 +1,4 @@
 public Action Command_BotsMenu(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   Menu menu = new Menu(BotsMenuHandler);
   menu.SetTitle("Bots Menu");
 

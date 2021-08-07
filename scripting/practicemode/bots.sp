@@ -54,10 +54,6 @@ public Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadca
 }
 
 public Action Timer_RespawnBots(Handle timer) {
-  if (!g_InPracticeMode) {
-    return Plugin_Continue;
-  }
-
   for (int i = 1; i <= MaxClients; i++) {
     if (IsPMBot(i) && !IsPlayerAlive(i)) {
       bool respawn = true;
@@ -191,10 +187,6 @@ void GiveBotParams(int bot) {
 // Commands.
 
 public Action Command_Bot(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   char name[64];
   if (args >= 1) {
     GetCmdArgString(name, sizeof(name));
@@ -215,10 +207,6 @@ public Action Command_Bot(int client, int args) {
 }
 
 public Action Command_CTBot(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   char name[64];
   if (args >= 1) {
     GetCmdArgString(name, sizeof(name));
@@ -239,10 +227,6 @@ public Action Command_CTBot(int client, int args) {
 }
 
 public Action Command_TBot(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   char name[64];
   if (args >= 1) {
     GetCmdArgString(name, sizeof(name));
@@ -263,10 +247,6 @@ public Action Command_TBot(int client, int args) {
 }
 
 public Action Command_MoveBot(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   int bot = GetClientBot(client);
   if (bot <= 0) {
     return Plugin_Handled;
@@ -282,10 +262,6 @@ public Action Command_MoveBot(int client, int args) {
 }
 
 public Action Command_CrouchBot(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   char name[64];
   if (args >= 1) {
     GetCmdArgString(name, sizeof(name));
@@ -336,10 +312,6 @@ public Action Command_BotPlace(int client, int args) {
 }
 
 public Action Command_Boost(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   int bot = CreateBot(client, false);
   if (bot <= 0) {
     return Plugin_Handled;
@@ -360,10 +332,6 @@ public Action Command_Boost(int client, int args) {
 }
 
 public Action Command_CrouchBoost(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   int bot = CreateBot(client, true);
   if (bot <= 0) {
     return Plugin_Handled;
@@ -388,10 +356,6 @@ public bool RayDontHitSelf(int entity, int contentsMask, any data) {
 }
 
 public Action Command_RemoveBot(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (g_ClientBots[client].Length == 1) {
     KickClientBot(client, 0);
     return Plugin_Handled;
@@ -414,19 +378,11 @@ public Action Command_RemoveBot(int client, int args) {
 }
 
 public Action Command_RemoveBots(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   KickAllClientBots(client);
   return Plugin_Handled;
 }
 
 public Action Event_BotDamageDealtEvent(Event event, const char[] name, bool dontBroadcast) {
-  if (!g_InPracticeMode) {
-    return Plugin_Continue;
-  }
-
   int attacker = GetClientOfUserId(event.GetInt("attacker"));
   int victim = GetClientOfUserId(event.GetInt("userid"));
 
@@ -442,10 +398,6 @@ public Action Event_BotDamageDealtEvent(Event event, const char[] name, bool don
 // TODO: rework this to print the message to the bot owner AND the flash thrower.
 // It probably needs to use the flashbang_detonate event (so piggyback on Event_FlashDetonate).
 public Action Event_PlayerBlind(Event event, const char[] name, bool dontBroadcast) {
-  if (!g_InPracticeMode) {
-    return;
-  }
-
   int userid = event.GetInt("userid");
   int client = GetClientOfUserId(userid);
   if (IsPMBot(client)) {
@@ -476,10 +428,6 @@ public void KillFlashEffect(int serial) {
 }
 
 public Action Command_SaveBots(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   bool hasCurrentBots = IsPMBot(GetClientBot(client));
   if (!hasCurrentBots) {
     // This is mostly just to prevent accidental deletion.
@@ -526,10 +474,6 @@ public Action Command_SaveBots(int client, int args) {
 }
 
 public Action Command_LoadBots(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   char mapName[PLATFORM_MAX_PATH];
   GetCleanMapName(mapName, sizeof(mapName));
   char path[PLATFORM_MAX_PATH];

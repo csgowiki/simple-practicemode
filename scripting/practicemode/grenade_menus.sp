@@ -15,10 +15,6 @@ public int PracticeMenuHandler(Menu menu, MenuAction action, int param1, int par
       }
     }
 
-    if (StrEqual(buffer, "launch_practice")) {
-      LaunchPracticeMode();
-    }
-
   } else if (action == MenuAction_End) {
     delete menu;
   }
@@ -176,7 +172,7 @@ static void AddIdsToMenu(Menu menu, ArrayList ids) {
 // Handlers for the grenades menu.
 
 public int Grenade_PlayerAndCategoryHandler(Menu menu, MenuAction action, int param1, int param2) {
-  if (action == MenuAction_Select && g_InPracticeMode) {
+  if (action == MenuAction_Select) {
     int client = param1;
     g_ClientLastTopMenuPos[client] = GetMenuSelectionPosition();
     char buffer[MAX_NAME_LENGTH + AUTH_LENGTH + 1];
@@ -203,7 +199,7 @@ public int Grenade_PlayerAndCategoryHandler(Menu menu, MenuAction action, int pa
 }
 
 public int Grenade_NadeHandler(Menu menu, MenuAction action, int param1, int param2) {
-  if (action == MenuAction_Select && g_InPracticeMode) {
+  if (action == MenuAction_Select) {
     int client = param1;
     g_ClientLastMenuPos[client] = GetMenuSelectionPosition();
     HandleGrenadeSelected(client, menu, param2);

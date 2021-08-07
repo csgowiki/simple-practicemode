@@ -22,8 +22,6 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-bool g_InPracticeMode = false;
-bool g_PugsetupLoaded = false;
 bool g_CSUtilsLoaded = false;
 bool g_BotMimicLoaded = false;
 
@@ -217,8 +215,6 @@ char g_UserSettingDisplayName[UserSetting_NumSettings][USERSETTING_DISPLAY_LENGT
 
 // Forwards
 Handle g_OnGrenadeSaved = INVALID_HANDLE;
-Handle g_OnPracticeModeDisabled = INVALID_HANDLE;
-Handle g_OnPracticeModeEnabled = INVALID_HANDLE;
 Handle g_OnPracticeModeSettingChanged = INVALID_HANDLE;
 Handle g_OnPracticeModeSettingsRead = INVALID_HANDLE;
 
@@ -255,7 +251,6 @@ public Plugin myinfo = {
 // clang-format on
 
 public void OnPluginStart() {
-  g_InPracticeMode = true;
   AddCommandListener(Command_TeamJoin, "jointeam");
   AddCommandListener(Command_Noclip, "noclip");
   AddCommandListener(Command_SetPos, "setpos");
@@ -263,8 +258,6 @@ public void OnPluginStart() {
   // Forwards
   g_OnGrenadeSaved = CreateGlobalForward("PM_OnPracticeModeEnabled", ET_Event, Param_Cell,
                                          Param_Array, Param_Array, Param_String);
-  g_OnPracticeModeDisabled = CreateGlobalForward("PM_OnPracticeModeEnabled", ET_Ignore);
-  g_OnPracticeModeEnabled = CreateGlobalForward("PM_OnPracticeModeEnabled", ET_Ignore);
   g_OnPracticeModeSettingChanged = CreateGlobalForward(
       "PM_OnPracticeModeEnabled", ET_Ignore, Param_Cell, Param_String, Param_String, Param_Cell);
   g_OnPracticeModeSettingsRead = CreateGlobalForward("PM_OnPracticeModeEnabled", ET_Ignore);
@@ -306,8 +299,6 @@ public void OnPluginStart() {
         "Dumps debug info to a file (addons/sourcemod/logs/practicemode_debuginfo.txt by default)");
   }
 
-  RegAdminCmd("sm_exitpractice", Command_ExitPracticeMode, ADMFLAG_CHANGEMAP,
-              "Exits practice mode");
   RegAdminCmd("sm_translategrenades", Command_TranslateGrenades, ADMFLAG_CHANGEMAP,
               "Translates all grenades on this map");
   RegAdminCmd("sm_fixgrenades", Command_FixGrenades, ADMFLAG_CHANGEMAP,
@@ -692,7 +683,6 @@ public void OnPluginStart() {
   HookEvent("player_death", Event_PlayerDeath);
   HookEvent("round_freeze_end", Event_FreezeEnd);
 
-  g_PugsetupLoaded = LibraryExists("pugsetup");
   g_CSUtilsLoaded = LibraryExists("csutils");
 
   CreateTimer(1.0, Timer_GivePlayersMoney, _, TIMER_REPEAT);
@@ -706,7 +696,6 @@ public void OnPluginEnd() {
 }
 
 public void OnLibraryAdded(const char[] name) {
-  g_PugsetupLoaded = LibraryExists("pugsetup");
   g_CSUtilsLoaded = LibraryExists("csutils");
   g_BotMimicLoaded = LibraryExists("botmimic");
   if (LibraryExists("updater")) {
@@ -715,7 +704,6 @@ public void OnLibraryAdded(const char[] name) {
 }
 
 public void OnLibraryRemoved(const char[] name) {
-  g_PugsetupLoaded = LibraryExists("pugsetup");
   g_CSUtilsLoaded = LibraryExists("csutils");
   g_BotMimicLoaded = LibraryExists("botmimic");
 }
@@ -724,17 +712,11 @@ public void OnLibraryRemoved(const char[] name) {
  * Silences all cvar changes in practice mode.
  */
 public Action Event_CvarChanged(Event event, const char[] name, bool dontBroadcast) {
-  if (g_InPracticeMode) {
-    event.BroadcastDisabled = true;
-  }
+  event.BroadcastDisabled = true;
   return Plugin_Continue;
 }
 
 public Action Event_PlayerSpawn(Event event, const char[] name, bool dontBroadcast) {
-  if (!g_InPracticeMode) {
-    LaunchPracticeMode();
-  }
-
   int client = GetClientOfUserId(event.GetInt("userid"));
   if (IsPlayer(client) && g_SavedRespawnActive[client]) {
     TeleportEntity(client, g_SavedRespawnOrigin[client], g_SavedRespawnAngles[client], NULL_VECTOR);
@@ -767,9 +749,6 @@ public void OnClientConnected(int client) {
   g_RunningRepeatedCommand[client] = false;
   g_RunningRoundRepeatedCommandDelay[client].Clear();
   g_RunningRoundRepeatedCommandArg[client].Clear();
-  if (!g_InPracticeMode) {
-    LaunchPracticeMode();
-  }
 }
 
 public void OnMapStart() {
@@ -842,9 +821,7 @@ public void OnConfigsExecuted() {
 public void OnClientDisconnect(int client) {
   MaybeWriteNewGrenadeData();
 
-  if (g_InPracticeMode) {
-    KickAllClientBots(client);
-  }
+  KickAllClientBots(client);
 
   g_IsPMBot[client] = false;
 
@@ -855,21 +832,27 @@ public void OnClientDisconnect(int client) {
       playerCount++;
     }
   }
-  if (playerCount == 0 && g_InPracticeMode) {
-    ExitPracticeMode();
+  if (playerCount == 0) {
+    ClearBots();
   }
 }
 
 public void OnMapEnd() {
   MaybeWriteNewGrenadeData();
-
-  if (g_InPracticeMode) {
-    ExitPracticeMode();
-  }
-
+  ClearBots();
   Spawns_MapEnd();
   BotReplay_MapEnd();
   delete g_GrenadeLocationsKv;
+}
+
+public void ClearBots() {
+  for (int i = 1; i <= MaxClients; i++) {
+    if (IsClientInGame(i) && IsFakeClient(i) && g_IsPMBot[i]) {
+      KickClient(i);
+      g_IsPMBot[i] = false;
+    }
+  }
+  PM_MessageToAll("服务器空闲，Bot已清空");
 }
 
 static void MaybeWriteNewGrenadeData() {
@@ -893,10 +876,6 @@ public void OnClientPutInServer(int client) {
 }
 
 static void UpdateClientCvars(int client) {
-  if (!g_InPracticeMode) {
-    return;
-  }
-
   QueryClientConVar(client, "cl_color", QueryClientColor, client);
   QueryClientConVar(client, "volume", QueryClientVolume, client);
 }
@@ -955,10 +934,6 @@ public void GetColor(ClientColor c, int array[4]) {
 public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3], float angles[3],
                       int& weapon, int& subtype, int& cmdnum, int& tickcount, int& seed,
                       int mouse[2]) {
-  if (!g_InPracticeMode) {
-    return Plugin_Continue;
-  }
-
   if (IsPMBot(client)) {
     if (g_BotCrouching[client]) {
       buttons |= IN_DUCK;
@@ -1007,21 +982,18 @@ public Action Command_TeamJoin(int client, const char[] command, int argc) {
   if (!IsValidClient(client) || argc < 1)
     return Plugin_Handled;
 
-  if (g_InPracticeMode) {
-    char arg[4];
-    GetCmdArg(1, arg, sizeof(arg));
-    int team = StringToInt(arg);
-    SwitchPlayerTeam(client, team);
+  char arg[4];
+  GetCmdArg(1, arg, sizeof(arg));
+  int team = StringToInt(arg);
+  SwitchPlayerTeam(client, team);
 
-    // Since we force respawns off during bot replay, make teamswitches respawn players.
-    if (g_InBotReplayMode && team != CS_TEAM_SPECTATOR && team != CS_TEAM_NONE) {
-      CS_RespawnPlayer(client);
-    }
-
-    return Plugin_Handled;
+  // Since we force respawns off during bot replay, make teamswitches respawn players.
+  if (g_InBotReplayMode && team != CS_TEAM_SPECTATOR && team != CS_TEAM_NONE) {
+    CS_RespawnPlayer(client);
   }
 
-  return Plugin_Continue;
+  return Plugin_Handled;
+
 }
 
 public Action Command_Noclip(int client, const char[] command, int argc) {
@@ -1163,15 +1135,12 @@ public void ReadPracticeSettings() {
 public void LaunchPracticeMode() {
   ServerCommand("exec sourcemod/practicemode_start.cfg");
 
-  g_InPracticeMode = true;
   ReadPracticeSettings();
   for (int i = 0; i < g_BinaryOptionNames.Length; i++) {
     ChangeSetting(i, PM_IsSettingEnabled(i), false, true);
   }
 
-  PM_MessageToAll("Practice mode is now enabled.");
-  Call_StartForward(g_OnPracticeModeEnabled);
-  Call_Finish();
+  PM_MessageToAll("练习模式初始化完成~");
 }
 
 stock bool ChangeSetting(int index, bool enabled, bool print = true, bool force_setting = false) {
@@ -1228,46 +1197,6 @@ stock bool ChangeSetting(int index, bool enabled, bool print = true, bool force_
   return true;
 }
 
-public void ExitPracticeMode() {
-  if (!g_InPracticeMode) {
-    return;
-  }
-
-  Call_StartForward(g_OnPracticeModeDisabled);
-  Call_Finish();
-
-  for (int i = 1; i <= MaxClients; i++) {
-    if (IsClientInGame(i) && IsFakeClient(i) && g_IsPMBot[i]) {
-      KickClient(i);
-      g_IsPMBot[i] = false;
-    }
-  }
-
-  for (int i = 0; i < g_BinaryOptionNames.Length; i++) {
-    ChangeSetting(i, false, false);
-
-    // Restore the cvar values if they haven't already been.
-    Handle cvarRestore = g_BinaryOptionCvarRestore.Get(i);
-    if (cvarRestore != INVALID_HANDLE) {
-      RestoreCvars(cvarRestore, true);
-      g_BinaryOptionCvarRestore.Set(i, INVALID_HANDLE);
-    }
-  }
-
-  g_InPracticeMode = false;
-
-  // force turn noclip off for everyone
-  for (int i = 1; i <= MaxClients; i++) {
-    g_TestingFlash[i] = false;
-    if (IsValidClient(i)) {
-      SetEntityMoveType(i, MOVETYPE_WALK);
-    }
-  }
-
-  ServerCommand("exec sourcemod/practicemode_end.cfg");
-  PM_MessageToAll("Practice mode is now disabled.");
-}
-
 public Action Timer_GivePlayersMoney(Handle timer) {
   int maxMoney = GetCvarIntSafe("mp_maxmoney", 16000);
   if (g_InfiniteMoneyCvar.IntValue != 0) {
@@ -1316,7 +1245,7 @@ public int DelayedOnEntitySpawned(int entity) {
   if (IsGrenadeProjectile(className)) {
     // Get the cl_color value for the client that threw this grenade.
     int client = Entity_GetOwner(entity);
-    if (IsPlayer(client) && g_InPracticeMode &&
+    if (IsPlayer(client) &&
         GrenadeFromProjectileName(className) == GrenadeType_Smoke) {
       int index = g_ClientGrenadeThrowTimes[client].Push(EntIndexToEntRef(entity));
       g_ClientGrenadeThrowTimes[client].Set(index, view_as<int>(GetEngineTime()), 1);
@@ -1373,7 +1302,7 @@ public int DelayedOnEntitySpawned(int entity) {
 
 public Action Timer_TeleportClient(Handle timer, int serial) {
   int client = GetClientFromSerial(serial);
-  if (g_InPracticeMode && IsPlayer(client) && g_TestingFlash[client]) {
+  if (IsPlayer(client) && g_TestingFlash[client]) {
     float velocity[3];
     TeleportEntity(client, g_TestingFlashOrigins[client], g_TestingFlashAngles[client], velocity);
     SetEntityMoveType(client, MOVETYPE_NONE);
@@ -1382,16 +1311,12 @@ public Action Timer_TeleportClient(Handle timer, int serial) {
 
 public Action Timer_FakeGrenadeBack(Handle timer, int serial) {
   int client = GetClientFromSerial(serial);
-  if (g_InPracticeMode && IsPlayer(client)) {
+  if (IsPlayer(client)) {
     FakeClientCommand(client, "sm_lastgrenade");
   }
 }
 
 public Action Event_WeaponFired(Event event, const char[] name, bool dontBroadcast) {
-  if (!g_InPracticeMode) {
-    return;
-  }
-
   int userid = event.GetInt("userid");
   int client = GetClientOfUserId(userid);
   char weapon[CLASS_LENGTH];
@@ -1403,9 +1328,6 @@ public Action Event_WeaponFired(Event event, const char[] name, bool dontBroadca
 }
 
 public Action Event_SmokeDetonate(Event event, const char[] name, bool dontBroadcast) {
-  if (!g_InPracticeMode) {
-    return;
-  }
   GrenadeDetonateTimerHelper(event, "smoke grenade");
 }
 
@@ -1430,10 +1352,6 @@ public void GrenadeDetonateTimerHelper(Event event, const char[] grenadeName) {
 }
 
 public Action Event_FlashDetonate(Event event, const char[] name, bool dontBroadcast) {
-  if (!g_InPracticeMode) {
-    return;
-  }
-
   int userid = event.GetInt("userid");
   int client = GetClientOfUserId(userid);
   if (IsPlayer(client) && g_TestingFlash[client]) {
@@ -1465,10 +1383,6 @@ public void GetTestingFlashInfo(int serial) {
 }
 
 public Action Event_FreezeEnd(Event event, const char[] name, bool dontBroadcast) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   for (int i = 1; i <= MaxClients; i++) {
     if (!IsPlayer(i)) {
       continue;

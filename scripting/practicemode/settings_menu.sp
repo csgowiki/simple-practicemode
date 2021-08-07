@@ -41,7 +41,7 @@ public void GiveSettingsMenu(int client) {
 }
 
 public int SettingsMenuHandler(Menu menu, MenuAction action, int param1, int param2) {
-  if (action == MenuAction_Select && g_InPracticeMode) {
+  if (action == MenuAction_Select) {
     int client = param1;
     UserSetting setting = view_as<UserSetting>(GetMenuInt(menu, param2));
     ToggleSetting(client, setting);

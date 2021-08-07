@@ -44,11 +44,6 @@ forward void PM_OnSettingChanged(int settingNumber, const char[] settingId,
 native bool PM_StartPracticeMode();
 
 /**
- * Exits practice mode, returning if it was exited.
- */
-native bool PM_ExitPracticeMode();
-
-/**
  * Adds a new setting to practice mode.
  * @note The practicemode plugin will take over ownership of the enabledCvars and enabledValues
  * arrays.
@@ -87,7 +82,6 @@ public SharedPlugin __pl_practicemode = {
 #if !defined REQUIRE_PLUGIN
 public __pl_practicemode_SetNTVOptional() {
   MarkNativeAsOptional("PM_StartPracticeMode");
-  MarkNativeAsOptional("PM_ExitPracticeMode");
   MarkNativeAsOptional("PM_AddSetting");
   MarkNativeAsOptional("PM_IsPracticeModeEnabled");
   MarkNativeAsOptional("PM_IsSettingEnabled");

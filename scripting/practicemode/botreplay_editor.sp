@@ -201,15 +201,12 @@ void FinishRecording(int client, bool printOnFail) {
 }
 
 public Action Command_FinishRecording(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
   FinishRecording(client, true);
   return Plugin_Handled;
 }
 
 public Action Command_LookAtWeapon(int client, const char[] command, int argc) {
-  if (g_InPracticeMode && g_InBotReplayMode &&
+  if (g_InBotReplayMode &&
       GetSetting(client, UserSetting_StopsRecordingInspectKey)) {
     // TODO: also hook the noclip command as a way to finish recording.
     FinishRecording(client, false);
@@ -218,10 +215,6 @@ public Action Command_LookAtWeapon(int client, const char[] command, int argc) {
 }
 
 public Action Command_Cancel(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   int numReplaying = 0;
   for (int i = 0; i < MAX_REPLAY_CLIENTS; i++) {
     int bot = g_ReplayBotClients[i];
