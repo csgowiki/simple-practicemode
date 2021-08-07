@@ -51,7 +51,6 @@ ArrayList g_ChatAliasesCommands;
 
 // Plugin cvars
 ConVar g_AlphabetizeNadeMenusCvar;
-ConVar g_AutostartCvar;
 ConVar g_BotRespawnTimeCvar;
 ConVar g_DryRunFreezeTimeCvar;
 ConVar g_MaxGrenadesSavedCvar;
@@ -257,7 +256,7 @@ public Plugin myinfo = {
 // clang-format on
 
 public void OnPluginStart() {
-  g_InPracticeMode = false;
+  g_InPracticeMode = true;
   AddCommandListener(Command_TeamJoin, "jointeam");
   AddCommandListener(Command_Noclip, "noclip");
   AddCommandListener(Command_SetPos, "setpos");
@@ -607,8 +606,6 @@ public void OnPluginStart() {
                                             "Whether menus of grenades are alphabetized by name.");
   g_BotRespawnTimeCvar = CreateConVar("sm_practicemode_bot_respawn_time", "3.0",
                                       "How long it should take bots placed with .bot to respawn");
-  g_AutostartCvar = CreateConVar("sm_practicemode_autostart", "0",
-                                 "Whether the plugin is automatically started on mapstart");
   g_DryRunFreezeTimeCvar = CreateConVar("sm_practicemode_dry_run_freeze_time", "6",
                                         "Freezetime after running the .dryrun command.");
   g_MaxHistorySizeCvar = CreateConVar(
@@ -738,9 +735,8 @@ public Action Event_CvarChanged(Event event, const char[] name, bool dontBroadca
 }
 
 public Action Event_PlayerSpawn(Event event, const char[] name, bool dontBroadcast) {
-  CheckAutoStart();
   if (!g_InPracticeMode) {
-    return Plugin_Continue;
+    LaunchPracticeMode();
   }
 
   int client = GetClientOfUserId(event.GetInt("userid"));
@@ -775,7 +771,9 @@ public void OnClientConnected(int client) {
   g_RunningRepeatedCommand[client] = false;
   g_RunningRoundRepeatedCommandDelay[client].Clear();
   g_RunningRoundRepeatedCommandArg[client].Clear();
-  CheckAutoStart();
+  if (!g_InPracticeMode) {
+    LaunchPracticeMode();
+  }
 }
 
 public void OnMapStart() {
@@ -842,17 +840,7 @@ public void OnConfigsExecuted() {
     LogMessage("%s was unloaded and moved to %s", legacyPluginFile, disabledLegacyPluginName);
   }
 
-  CheckAutoStart();
-}
-
-public void CheckAutoStart() {
-  // Autostart practicemode if enabled.
-  if (g_AutostartCvar.IntValue != 0 && !g_InPracticeMode) {
-    bool pugsetup_live = g_PugsetupLoaded && PugSetup_GetGameState() != GameState_None;
-    if (!pugsetup_live) {
-      LaunchPracticeMode();
-    }
-  }
+  LaunchPracticeMode();
 }
 
 public void OnClientDisconnect(int client) {

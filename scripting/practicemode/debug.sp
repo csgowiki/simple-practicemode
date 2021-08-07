@@ -73,7 +73,6 @@ static void AddInterestingCvars(File f) {
   WriteCvarString(f, "mp_warmup_pausetimer");
   WriteCvarString(f, "mp_warmuptime_all_players_connected");
   WriteCvarString(f, "sm_allow_noclip");
-  WriteCvarString(f, "sm_practicemode_autostart");
   WriteCvarString(f, "sm_practicemode_can_be_started");
   WriteCvarString(f, "sv_cheats");
   WriteCvarString(f, "sv_coaching_enabled");
