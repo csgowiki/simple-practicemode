@@ -1,0 +1,23 @@
+smlib/
+*.inc
+
+# compiling
+compiled/
+build.sh
+compile.sh
+spcomp
+spcomp64
+
+# include
+*.inc
+!botmimic.inc
+!csutils.inc
+!dhooks.inc
+!logdebug.inc
+!practicemode.inc
+!restorecvars.inc
+!updater.inc
+
+# other
+configs/
+data/
