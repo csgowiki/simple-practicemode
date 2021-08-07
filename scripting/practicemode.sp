@@ -11,7 +11,7 @@
 #include "include/botmimic.inc"
 #include "include/csutils.inc"
 
-#include <get5>
+// #include <get5>
 #include <pugsetup>
 #include "include/updater.inc"
 
@@ -56,7 +56,6 @@ ConVar g_BotRespawnTimeCvar;
 ConVar g_DryRunFreezeTimeCvar;
 ConVar g_MaxGrenadesSavedCvar;
 ConVar g_MaxHistorySizeCvar;
-ConVar g_PracModeCanBeStartedCvar;
 ConVar g_SharedAllNadesCvar;
 ConVar g_FastfowardRequiresZeroVolumeCvar;
 ConVar g_MaxPlacedBotsCvar;
@@ -249,11 +248,11 @@ Handle g_OnPracticeModeSettingsRead = INVALID_HANDLE;
 
 // clang-format off
 public Plugin myinfo = {
-  name = "CS:GO PracticeMode",
-  author = "splewis",
-  description = "A practice mode that can be launched through the .setup menu",
+  name = "Simple Practicemode",
+  author = "splewis(Edit by CarOL)",
+  description = "A light-weight practicemod",
   version = PLUGIN_VERSION,
-  url = "https://github.com/splewis/csgo-practice-mode"
+  url = "https://github.com/hx-w/simple-practicemode"
 };
 // clang-format on
 
@@ -302,10 +301,6 @@ public void OnPluginStart() {
 
   {
     RegAdminCmd("sm_prac", Command_LaunchPracticeMode, ADMFLAG_CHANGEMAP, "Launches practice mode");
-    RegAdminCmd("sm_launchpractice", Command_LaunchPracticeMode, ADMFLAG_CHANGEMAP,
-                "Launches practice mode");
-    RegAdminCmd("sm_practice", Command_LaunchPracticeMode, ADMFLAG_CHANGEMAP,
-                "Launches practice mode");
     PM_AddChatAlias(".prac", "sm_prac");
 
     RegAdminCmd("sm_practicemap", Command_Map, ADMFLAG_CHANGEMAP);
@@ -622,8 +617,6 @@ public void OnPluginStart() {
   g_MaxGrenadesSavedCvar = CreateConVar(
       "sm_practicemode_max_grenades_saved", "512",
       "Maximum number of grenades that may be saved per-map, per-client. Set to 0 to disable.");
-  g_PracModeCanBeStartedCvar =
-      CreateConVar("sm_practicemode_can_be_started", "1", "Whether practicemode may be started");
   g_SharedAllNadesCvar = CreateConVar(
       "sm_practicemode_share_all_nades", "0",
       "When set to 1, grenades aren't per-user; they are shared amongst all users that have grenade access. Grenades are not displayed by user, but displayed in 1 grouping. Anyone on the server can edit other users' grenades.");
@@ -1558,45 +1551,9 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
     }
   }
 
-  if (!g_PugsetupLoaded) {
-    if (StrEqual(chatCommand, ".setup")) {
-      if (CheckCommandAccess(client, "sm_prac", ADMFLAG_CHANGEMAP)) {
-        GivePracticeMenu(client);
-      } else {
-        PM_Message(client, "You don't have permission to access practicemode.");
-      }
-    } else if (StrEqual(chatCommand, ".help")) {
-      ShowHelpInfo(client);
-    }
+  if (StrEqual(chatCommand, ".help")) {
+  // TODO 
   }
-}
-
-public void ShowHelpInfo(int client) {
-  char url[256];
-  char version[64];
-#if defined COMMIT_STRING_LONG
-  Format(version, sizeof(version), COMMIT_STRING_LONG);
-#else
-  Format(version, sizeof(version), PLUGIN_VERSION);
-#endif
-
-  Format(url, sizeof(url), "http://whiffcity.com/redirect_practicemode_help_version/%s", version);
-  ShowMOTDPanel(client, "Practicemode Help", url, MOTDPANEL_TYPE_URL);
-  QueryClientConVar(client, "cl_disablehtmlmotd", CheckMOTDAllowed, client);
-}
-
-public void CheckMOTDAllowed(QueryCookie cookie, int client, ConVarQueryResult result,
-                      const char[] cvarName, const char[] cvarValue) {
-  if (!StrEqual(cvarValue, "0")) {
-    PrintToChat(client, "You must have \x04cl_disablehtmlmotd 0 \x01to use that command.");
-  }
-}
-
-bool CanStartPracticeMode(int client) {
-  if (g_PracModeCanBeStartedCvar.IntValue == 0) {
-    return false;
-  }
-  return CheckCommandAccess(client, "sm_prac", ADMFLAG_CHANGEMAP);
 }
 
 public void CSU_OnThrowGrenade(int client, int entity, GrenadeType grenadeType, const float origin[3],

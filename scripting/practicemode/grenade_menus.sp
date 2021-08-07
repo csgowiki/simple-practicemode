@@ -1,44 +1,3 @@
-stock void GivePracticeMenu(int client, int style = ITEMDRAW_DEFAULT, int pos = -1) {
-  Menu menu = new Menu(PracticeMenuHandler);
-  SetMenuTitle(menu, "Practice Settings");
-  SetMenuExitButton(menu, true);
-
-  if (!g_InPracticeMode) {
-    bool canLaunch =
-        CanStartPracticeMode(client) && CheckCommandAccess(client, "sm_prac", ADMFLAG_CHANGEMAP);
-    AddMenuItem(menu, "launch_practice", "Start practice mode", EnabledIf(canLaunch));
-    style = ITEMDRAW_DISABLED;
-  } else {
-    AddMenuItem(menu, "end_menu", "Exit practice mode", style);
-  }
-
-  if (LibraryExists("get5")) {
-    AddMenuItem(menu, "get5", "Get5 options");
-  }
-
-  for (int i = 0; i < g_BinaryOptionNames.Length; i++) {
-    if (!g_BinaryOptionChangeable.Get(i)) {
-      continue;
-    }
-
-    char name[OPTION_NAME_LENGTH];
-    g_BinaryOptionNames.GetString(i, name, sizeof(name));
-
-    char enabled[32];
-    GetEnabledString(enabled, sizeof(enabled), g_BinaryOptionEnabled.Get(i), client);
-
-    char buffer[128];
-    Format(buffer, sizeof(buffer), "%s: %s", name, enabled);
-    AddMenuItem(menu, name, buffer, style);
-  }
-
-  if (pos == -1) {
-    DisplayMenu(menu, client, MENU_TIME_FOREVER);
-  } else {
-    DisplayMenuAtItem(menu, client, pos, MENU_TIME_FOREVER);
-  }
-}
-
 public int PracticeMenuHandler(Menu menu, MenuAction action, int param1, int param2) {
   if (action == MenuAction_Select) {
     int client = param1;
@@ -52,23 +11,12 @@ public int PracticeMenuHandler(Menu menu, MenuAction action, int param1, int par
       if (StrEqual(name, buffer)) {
         bool setting = !g_BinaryOptionEnabled.Get(i);
         ChangeSetting(i, setting);
-        GivePracticeMenu(client, ITEMDRAW_DEFAULT, pos);
         return 0;
       }
     }
 
     if (StrEqual(buffer, "launch_practice")) {
       LaunchPracticeMode();
-      GivePracticeMenu(client);
-    }
-    if (StrEqual(buffer, "get5")) {
-      FakeClientCommand(client, "sm_get5");
-    }
-    if (StrEqual(buffer, "end_menu")) {
-      ExitPracticeMode();
-      if (g_PugsetupLoaded) {
-        PugSetup_GiveSetupMenu(client);
-      }
     }
 
   } else if (action == MenuAction_End) {
