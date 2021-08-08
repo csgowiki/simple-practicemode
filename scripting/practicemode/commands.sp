@@ -41,10 +41,13 @@ public Action Command_Time2(int client, int args) {
 }
 
 public Action Command_CountDown(int client, int args) {
-  float timer_duration = float(GetRoundTimeSeconds());
+  float timer_duration = 0.0;
   char arg[PLATFORM_MAX_PATH];
   if (args >= 1 && GetCmdArg(1, arg, sizeof(arg))) {
     timer_duration = StringToFloat(arg);
+  }
+  if (timer_duration <= 0.0) {
+    timer_duration = float(GetRoundTimeSeconds());
   }
 
   PM_Message(client, "当你开始移动时倒计时开始，输入{GREEN} .stop {NORMAL}取消倒计时");

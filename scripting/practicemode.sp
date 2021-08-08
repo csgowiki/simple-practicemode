@@ -1,5 +1,3 @@
-#define UPDATE_URL "https://dl.whiffcity.com/plugins/practicemode/practicemode.txt"
-
 #include <clientprefs>
 #include <cstrike>
 #include <sdkhooks>
@@ -147,6 +145,7 @@ bool g_RunningLiveTimeCommand[MAXPLAYERS + 1];  // Used by .timer2 & .countdown,
 float g_TimerDuration[MAXPLAYERS + 1];  // Used by .countdown, set to the length of the countdown.
 TimerType g_TimerType[MAXPLAYERS + 1];
 float g_LastTimeCommand[MAXPLAYERS + 1];
+bool g_OnCountDownRec[MAXPLAYERS + 1];
 
 MoveType g_PreFastForwardMoveTypes[MAXPLAYERS + 1];
 
@@ -193,6 +192,7 @@ Handle g_OnPracticeModeSettingsRead = INVALID_HANDLE;
 #include "practicemode/bots_menu.sp"
 #include "practicemode/natives.sp"
 #include "practicemode/commands.sp"
+#include "practicemode/timers_menu.sp"
 #include "practicemode/debug.sp"
 #include "practicemode/grenade_commands.sp"
 #include "practicemode/grenade_utils.sp"
@@ -202,8 +202,8 @@ Handle g_OnPracticeModeSettingsRead = INVALID_HANDLE;
 // clang-format off
 public Plugin myinfo = {
   name = "Simple Practicemode",
-  author = "splewis(Edit by CarOL)",
-  description = "A light-weight practicemod",
+  author = "CarOL(based on splewis)",
+  description = "A light-weight practicemode",
   version = PLUGIN_VERSION,
   url = "https://github.com/hx-w/simple-practicemode"
 };
@@ -239,6 +239,7 @@ public void OnPluginStart() {
     g_GrenadeHistoryAngles[i] = new ArrayList(3);
     g_ClientGrenadeThrowTimes[i] = new ArrayList(2);
     g_ClientBots[i] = new ArrayList();
+    g_OnCountDownRec[i] = false;
   }
 
   {
@@ -405,6 +406,10 @@ public void OnPluginStart() {
 
     // TODO: A timer menu may be more accesible to users, as the number of timer types continues to
     // increase...
+    RegConsoleCmd("sm_timers", Command_TimersMenu);
+    PM_AddChatAlias(".timers", "sm_timers");
+    PM_AddChatAlias(".times", "sm_timers");
+
     RegConsoleCmd("sm_time", Command_Time);
     PM_AddChatAlias(".timer", "sm_time");
     PM_AddChatAlias(".time", "sm_time");
@@ -591,6 +596,7 @@ public void OnClientConnected(int client) {
   g_SavedRespawnActive[client] = false;
   g_LastGrenadeType[client] = GrenadeType_None;
   g_RunningRepeatedCommand[client] = false;
+  g_OnCountDownRec[client] = false;
 }
 
 public void OnMapStart() {
@@ -780,6 +786,10 @@ public Action Command_TeamJoin(int client, const char[] command, int argc) {
 }
 
 public Action OnClientSayCommand(int client, const char[] command, const char[] text) {
+  if (IsPlayer(client) && g_OnCountDownRec[client] && StrEqual(command, "say")) {
+    ClientCommand(client, "sm_countdown %s", text);
+    g_OnCountDownRec[client] = false;
+  }
 }
 
 public void ReadPracticeSettings() {
