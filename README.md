@@ -1,4 +1,4 @@
-simple-practice
+simple[PURE]-practice
 ===================
 ## Intro
 

@@ -61,7 +61,6 @@ static void AddVersionInfo(File f) {
   WriteCvarString(f, "metamod_version");
   WriteCvarString(f, "sm_csutils_version");
   WriteCvarString(f, "sm_botmimic_version");
-  WriteCvarString(f, "sm_pugsetup_version");
 }
 
 static void AddInterestingCvars(File f) {
@@ -72,8 +71,6 @@ static void AddInterestingCvars(File f) {
   WriteCvarString(f, "mp_round_restart_delay");
   WriteCvarString(f, "mp_warmup_pausetimer");
   WriteCvarString(f, "mp_warmuptime_all_players_connected");
-  WriteCvarString(f, "sm_allow_noclip");
-  WriteCvarString(f, "sm_practicemode_autostart");
   WriteCvarString(f, "sm_practicemode_can_be_started");
   WriteCvarString(f, "sv_cheats");
   WriteCvarString(f, "sv_coaching_enabled");

@@ -201,16 +201,12 @@ void FinishRecording(int client, bool printOnFail) {
 }
 
 public Action Command_FinishRecording(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
   FinishRecording(client, true);
   return Plugin_Handled;
 }
 
 public Action Command_LookAtWeapon(int client, const char[] command, int argc) {
-  if (g_InPracticeMode && g_InBotReplayMode &&
-      GetSetting(client, UserSetting_StopsRecordingInspectKey)) {
+  if (g_InBotReplayMode) {
     // TODO: also hook the noclip command as a way to finish recording.
     FinishRecording(client, false);
   }
@@ -218,10 +214,6 @@ public Action Command_LookAtWeapon(int client, const char[] command, int argc) {
 }
 
 public Action Command_Cancel(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   int numReplaying = 0;
   for (int i = 0; i < MAX_REPLAY_CLIENTS; i++) {
     int bot = g_ReplayBotClients[i];
@@ -392,7 +384,7 @@ public int ReplayRoleNadesMenuHandler(Menu menu, MenuAction action, int param1, 
     TeleportEntity(client, personOrigin, personAngles, NULL_VECTOR);
 
     // TODO: de-dupliate with TeleportToSavedGrenadePosition.
-    if (type != GrenadeType_None && GetSetting(client, UserSetting_SwitchToNadeOnSelect)) {
+    if (type != GrenadeType_None) {
       char weaponName[64];
       GetGrenadeWeapon(type, weaponName, sizeof(weaponName));
       FakeClientCommand(client, "use %s", weaponName);
@@ -482,12 +474,8 @@ stock void StartRecording(int client, int role, bool printCommands = true) {
   if (printCommands) {
     PM_Message(client, "Started recording player %d role.", role + 1);
 
-    if (GetSetting(client, UserSetting_StopsRecordingInspectKey)) {
-      PM_Message(client,
-                 "Use .finish, your inspect (default:f) bind, or .noclip to stop recording.");
-    } else {
-      PM_Message(client, "Use .finish or .noclip to stop recording.");
-    }
+    PM_Message(client,
+                "Use .finish, your inspect (default:f) bind, or .noclip to stop recording.");
   }
 }
 

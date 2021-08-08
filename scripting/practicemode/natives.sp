@@ -1,4 +1,4 @@
-#define MESSAGE_PREFIX "[\x05PracticeMode\x01]"
+char MESSAGE_PREFIX[64] = "[{LIGHT_GREEN}练习模式{NORMAL}]";
 
 /**
  * Natives.
@@ -6,10 +6,7 @@
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max) {
   g_ChatAliases = new ArrayList(ALIAS_LENGTH);
   g_ChatAliasesCommands = new ArrayList(COMMAND_LENGTH);
-  CreateNative("PM_StartPracticeMode", Native_StartPracticeMode);
-  CreateNative("PM_ExitPracticeMode", Native_ExitPracticeMode);
   CreateNative("PM_AddSetting", Native_AddSetting);
-  CreateNative("PM_IsPracticeModeEnabled", Native_IsPracticeModeEnabled);
   CreateNative("PM_IsSettingEnabled", Native_IsSettingEnabled);
   CreateNative("PM_Message", Native_Message);
   CreateNative("PM_MessageToAll", Native_MessageToAll);
@@ -17,23 +14,6 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
   RegPluginLibrary("practicemode");
 }
 
-public int Native_StartPracticeMode(Handle plugin, int numParams) {
-  if (g_InPracticeMode) {
-    return false;
-  } else {
-    LaunchPracticeMode();
-    return true;
-  }
-}
-
-public int Native_ExitPracticeMode(Handle plugin, int numParams) {
-  if (g_InPracticeMode) {
-    ExitPracticeMode();
-    return true;
-  } else {
-    return false;
-  }
-}
 
 public int Native_AddSetting(Handle plugin, int numParams) {
   char settingId[OPTION_NAME_LENGTH];
@@ -70,10 +50,6 @@ public int Native_AddSetting(Handle plugin, int numParams) {
   return g_BinaryOptionIds.Length - 1;
 }
 
-public int Native_IsPracticeModeEnabled(Handle plugin, int numParams) {
-  return g_InPracticeMode;
-}
-
 public int Native_IsSettingEnabled(Handle plugin, int numParams) {
   int index = GetNativeCell(1);
   if (index < 0 || index >= g_BinaryOptionIds.Length) {
@@ -92,13 +68,11 @@ public int Native_Message(Handle plugin, int numParams) {
   SetGlobalTransTarget(client);
   FormatNativeString(0, 2, 3, sizeof(buffer), bytesWritten, buffer);
 
-  char prefix[64] = MESSAGE_PREFIX;
-
   char finalMsg[1024];
-  if (StrEqual(prefix, ""))
+  if (StrEqual(MESSAGE_PREFIX, ""))
     Format(finalMsg, sizeof(finalMsg), " %s", buffer);
   else
-    Format(finalMsg, sizeof(finalMsg), "%s %s", prefix, buffer);
+    Format(finalMsg, sizeof(finalMsg), "%s %s", MESSAGE_PREFIX, buffer);
 
   if (client == 0) {
     Colorize(finalMsg, sizeof(finalMsg), false);
@@ -110,7 +84,6 @@ public int Native_Message(Handle plugin, int numParams) {
 }
 
 public int Native_MessageToAll(Handle plugin, int numParams) {
-  char prefix[64] = MESSAGE_PREFIX;
   char buffer[1024];
   int bytesWritten = 0;
 
@@ -122,10 +95,10 @@ public int Native_MessageToAll(Handle plugin, int numParams) {
     FormatNativeString(0, 1, 2, sizeof(buffer), bytesWritten, buffer);
 
     char finalMsg[1024];
-    if (StrEqual(prefix, ""))
+    if (StrEqual(MESSAGE_PREFIX, ""))
       Format(finalMsg, sizeof(finalMsg), " %s", buffer);
     else
-      Format(finalMsg, sizeof(finalMsg), "%s %s", prefix, buffer);
+      Format(finalMsg, sizeof(finalMsg), "%s %s", MESSAGE_PREFIX, buffer);
 
     if (i != 0) {
       Colorize(finalMsg, sizeof(finalMsg));

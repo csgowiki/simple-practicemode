@@ -1,5 +1,3 @@
-#define UPDATE_URL "https://dl.whiffcity.com/plugins/practicemode/practicemode.txt"
-
 #include <clientprefs>
 #include <cstrike>
 #include <sdkhooks>
@@ -8,22 +6,16 @@
 #include <sourcemod>
 
 #undef REQUIRE_PLUGIN
-#include "include/botmimic.inc"
-#include "include/csutils.inc"
+#include <botmimic>
+#include <csutils>
 
-#include <get5>
-#include <pugsetup>
-#include "include/updater.inc"
-
-#include "include/practicemode.inc"
-#include "include/restorecvars.inc"
+#include <practicemode>
+#include <restorecvars>
 #include "practicemode/util.sp"
 
 #pragma semicolon 1
 #pragma newdecls required
 
-bool g_InPracticeMode = false;
-bool g_PugsetupLoaded = false;
 bool g_CSUtilsLoaded = false;
 bool g_BotMimicLoaded = false;
 
@@ -50,14 +42,9 @@ ArrayList g_ChatAliases;
 ArrayList g_ChatAliasesCommands;
 
 // Plugin cvars
-ConVar g_AlphabetizeNadeMenusCvar;
-ConVar g_AutostartCvar;
 ConVar g_BotRespawnTimeCvar;
 ConVar g_DryRunFreezeTimeCvar;
-ConVar g_MaxGrenadesSavedCvar;
 ConVar g_MaxHistorySizeCvar;
-ConVar g_PracModeCanBeStartedCvar;
-ConVar g_SharedAllNadesCvar;
 ConVar g_FastfowardRequiresZeroVolumeCvar;
 ConVar g_MaxPlacedBotsCvar;
 
@@ -74,7 +61,6 @@ ConVar g_PatchGrenadeTrajectoryCvar;
 ConVar g_GrenadeTrajectoryClientColorCvar;
 ConVar g_RandomGrenadeTrajectoryCvar;
 
-ConVar g_AllowNoclipCvar;
 ConVar g_GrenadeTrajectoryCvar;
 ConVar g_GrenadeThicknessCvar;
 ConVar g_GrenadeTimeCvar;
@@ -86,18 +72,9 @@ ConVar g_TestFlashTeleportDelayCvar;
 ConVar g_VersionCvar;
 
 // Saved grenade locations data
-#define GRENADE_DESCRIPTION_LENGTH 256
-#define GRENADE_NAME_LENGTH 64
 #define GRENADE_ID_LENGTH 16
-#define GRENADE_CATEGORY_LENGTH 128
 #define AUTH_LENGTH 64
 #define AUTH_METHOD AuthId_Steam2
-char g_GrenadeLocationsFile[PLATFORM_MAX_PATH];
-KeyValues
-    g_GrenadeLocationsKv;  // Inside any global function, we expect this to be at the root level.
-int g_CurrentSavedGrenadeId[MAXPLAYERS + 1];
-bool g_UpdatedGrenadeKv = false;  // whether there has been any changed the kv structure this map
-int g_NextID = 0;
 
 // Grenade history data
 int g_GrenadeHistoryIndex[MAXPLAYERS + 1];
@@ -116,9 +93,6 @@ float g_LastFlashDetonateTime[MAXPLAYERS + 1];
 bool g_RunningRepeatedCommand[MAXPLAYERS + 1];
 char g_RunningRepeatedCommandArg[MAXPLAYERS][256];
 
-ArrayList g_RunningRoundRepeatedCommandDelay[MAXPLAYERS + 1]; /* float */
-ArrayList g_RunningRoundRepeatedCommandArg[MAXPLAYERS + 1];   /* char[256] */
-
 GrenadeType g_LastGrenadeType[MAXPLAYERS + 1];
 float g_LastGrenadeOrigin[MAXPLAYERS + 1][3];
 float g_LastGrenadeVelocity[MAXPLAYERS + 1][3];
@@ -127,8 +101,6 @@ float g_LastGrenadeVelocity[MAXPLAYERS + 1][3];
 bool g_SavedRespawnActive[MAXPLAYERS + 1];
 float g_SavedRespawnOrigin[MAXPLAYERS + 1][3];
 float g_SavedRespawnAngles[MAXPLAYERS + 1][3];
-
-ArrayList g_KnownNadeCategories = null;
 
 ArrayList g_ClientBots[MAXPLAYERS + 1];  // Bots owned by each client.
 bool g_IsPMBot[MAXPLAYERS + 1];
@@ -141,6 +113,8 @@ float g_BotDeathTime[MAXPLAYERS + 1];
 
 bool g_BotInit = false;
 bool g_InBotReplayMode = false;
+bool g_InDryRun = false;
+
 KeyValues g_ReplaysKv;
 
 #define PLAYER_HEIGHT 72.0
@@ -158,8 +132,6 @@ enum ClientColor {
   ClientColor_Orange = 4,
 };
 
-int g_LastNoclipCommand[MAXPLAYERS + 1];
-
 // Timer data. Supports 3 modes:
 enum TimerType {
   TimerType_Increasing_Movement = 0,  // Increasing timer, begins when client moves.
@@ -173,6 +145,7 @@ bool g_RunningLiveTimeCommand[MAXPLAYERS + 1];  // Used by .timer2 & .countdown,
 float g_TimerDuration[MAXPLAYERS + 1];  // Used by .countdown, set to the length of the countdown.
 TimerType g_TimerType[MAXPLAYERS + 1];
 float g_LastTimeCommand[MAXPLAYERS + 1];
+bool g_OnCountDownRec[MAXPLAYERS + 1];
 
 MoveType g_PreFastForwardMoveTypes[MAXPLAYERS + 1];
 
@@ -187,46 +160,27 @@ enum GrenadeMenuType {
   GrenadeMenuType_MultiCategory = 6,
 };
 
-// All the data we need to call GiveGrenadeMenu for a client to reopen the .nades menu
-// where they left off. The first set are for the 'top' menus where you select a player or category.
-// The second set are for the lower level menus of selecting a single grenade from a
-// player/category menu.
-GrenadeMenuType g_ClientLastTopMenuType[MAXPLAYERS + 1];
-int g_ClientLastTopMenuPos[MAXPLAYERS + 1];
-char g_ClientLastTopMenuData[MAXPLAYERS + 1][AUTH_LENGTH];
-
-GrenadeMenuType g_ClientLastMenuType[MAXPLAYERS + 1];
-int g_ClientLastMenuPos[MAXPLAYERS + 1];
-char g_ClientLastMenuData[MAXPLAYERS + 1][AUTH_LENGTH];
-
 // Data storing spawn priorities.
 ArrayList g_CTSpawns = null;
 ArrayList g_TSpawns = null;
 KeyValues g_NamedSpawnsKv = null;
 
 enum UserSetting {
-  UserSetting_ShowAirtime,
-  UserSetting_LeaveNadeMenuOpen,
-  UserSetting_NoGrenadeTrajectory,
-  UserSetting_SwitchToNadeOnSelect,
-  UserSetting_StopsRecordingInspectKey,
-  UserSetting_NumSettings,
+  UserSetting_ShowAirtime = 1,
+  UserSetting_NoGrenadeTrajectory = 0
 };
+
+#define USERSETTING_NUMSETTINGS 2
 #define USERSETTING_DISPLAY_LENGTH 128
-Handle g_UserSettingCookies[UserSetting_NumSettings];
-bool g_UserSettingDefaults[UserSetting_NumSettings];
-char g_UserSettingDisplayName[UserSetting_NumSettings][USERSETTING_DISPLAY_LENGTH];
+Handle g_UserSettingCookies[USERSETTING_NUMSETTINGS];
+bool g_UserSettingDefaults[USERSETTING_NUMSETTINGS];
+char g_UserSettingDisplayName[USERSETTING_NUMSETTINGS][USERSETTING_DISPLAY_LENGTH];
 
 // Forwards
-Handle g_OnGrenadeSaved = INVALID_HANDLE;
-Handle g_OnPracticeModeDisabled = INVALID_HANDLE;
-Handle g_OnPracticeModeEnabled = INVALID_HANDLE;
 Handle g_OnPracticeModeSettingChanged = INVALID_HANDLE;
 Handle g_OnPracticeModeSettingsRead = INVALID_HANDLE;
 
 #define CHICKEN_MODEL "models/chicken/chicken.mdl"
-
-#include "practicemode/grenade_iterators.sp"
 
 #include "practicemode/botreplay.sp"
 #include "practicemode/botreplay_data.sp"
@@ -236,38 +190,28 @@ Handle g_OnPracticeModeSettingsRead = INVALID_HANDLE;
 #include "practicemode/backups.sp"
 #include "practicemode/bots.sp"
 #include "practicemode/bots_menu.sp"
+#include "practicemode/natives.sp"
 #include "practicemode/commands.sp"
+#include "practicemode/timers_menu.sp"
 #include "practicemode/debug.sp"
 #include "practicemode/grenade_commands.sp"
-#include "practicemode/grenade_filters.sp"
-#include "practicemode/grenade_menus.sp"
 #include "practicemode/grenade_utils.sp"
-#include "practicemode/natives.sp"
-#include "practicemode/pugsetup_integration.sp"
 #include "practicemode/settings_menu.sp"
 #include "practicemode/spawns.sp"
 
 // clang-format off
 public Plugin myinfo = {
-  name = "CS:GO PracticeMode",
-  author = "splewis",
-  description = "A practice mode that can be launched through the .setup menu",
+  name = "Simple Practicemode",
+  author = "CarOL(based on splewis)",
+  description = "A light-weight practicemode",
   version = PLUGIN_VERSION,
-  url = "https://github.com/splewis/csgo-practice-mode"
+  url = "https://github.com/hx-w/simple-practicemode"
 };
 // clang-format on
 
 public void OnPluginStart() {
-  g_InPracticeMode = false;
   AddCommandListener(Command_TeamJoin, "jointeam");
-  AddCommandListener(Command_Noclip, "noclip");
-  AddCommandListener(Command_SetPos, "setpos");
-
   // Forwards
-  g_OnGrenadeSaved = CreateGlobalForward("PM_OnPracticeModeEnabled", ET_Event, Param_Cell,
-                                         Param_Array, Param_Array, Param_String);
-  g_OnPracticeModeDisabled = CreateGlobalForward("PM_OnPracticeModeEnabled", ET_Ignore);
-  g_OnPracticeModeEnabled = CreateGlobalForward("PM_OnPracticeModeEnabled", ET_Ignore);
   g_OnPracticeModeSettingChanged = CreateGlobalForward(
       "PM_OnPracticeModeEnabled", ET_Ignore, Param_Cell, Param_String, Param_String, Param_Cell);
   g_OnPracticeModeSettingsRead = CreateGlobalForward("PM_OnPracticeModeEnabled", ET_Ignore);
@@ -286,7 +230,6 @@ public void OnPluginStart() {
   ReadPracticeSettings();
 
   // Setup stuff for grenade history
-  HookEvent("weapon_fire", Event_WeaponFired);
   HookEvent("flashbang_detonate", Event_FlashDetonate);
   HookEvent("smokegrenade_detonate", Event_SmokeDetonate);
   HookEvent("player_blind", Event_PlayerBlind);
@@ -296,18 +239,10 @@ public void OnPluginStart() {
     g_GrenadeHistoryAngles[i] = new ArrayList(3);
     g_ClientGrenadeThrowTimes[i] = new ArrayList(2);
     g_ClientBots[i] = new ArrayList();
-    g_RunningRoundRepeatedCommandArg[i] = new ArrayList(256);
-    g_RunningRoundRepeatedCommandDelay[i] = new ArrayList();
+    g_OnCountDownRec[i] = false;
   }
 
   {
-    RegAdminCmd("sm_prac", Command_LaunchPracticeMode, ADMFLAG_CHANGEMAP, "Launches practice mode");
-    RegAdminCmd("sm_launchpractice", Command_LaunchPracticeMode, ADMFLAG_CHANGEMAP,
-                "Launches practice mode");
-    RegAdminCmd("sm_practice", Command_LaunchPracticeMode, ADMFLAG_CHANGEMAP,
-                "Launches practice mode");
-    PM_AddChatAlias(".prac", "sm_prac");
-
     RegAdminCmd("sm_practicemap", Command_Map, ADMFLAG_CHANGEMAP);
     PM_AddChatAlias(".map", "sm_practicemap");
 
@@ -315,13 +250,6 @@ public void OnPluginStart() {
         "practicemode_debuginfo", Command_DebugInfo, ADMFLAG_CHANGEMAP,
         "Dumps debug info to a file (addons/sourcemod/logs/practicemode_debuginfo.txt by default)");
   }
-
-  RegAdminCmd("sm_exitpractice", Command_ExitPracticeMode, ADMFLAG_CHANGEMAP,
-              "Exits practice mode");
-  RegAdminCmd("sm_translategrenades", Command_TranslateGrenades, ADMFLAG_CHANGEMAP,
-              "Translates all grenades on this map");
-  RegAdminCmd("sm_fixgrenades", Command_FixGrenades, ADMFLAG_CHANGEMAP,
-              "Reset grenade ids so they are consecutive and start at 1.");
 
   // Grenade history commands
   {
@@ -334,15 +262,8 @@ public void OnPluginStart() {
     RegConsoleCmd("sm_lastgrenade", Command_LastGrenade);
     PM_AddChatAlias(".last", "sm_lastgrenade");
 
-    RegConsoleCmd("sm_nextgrenade", Command_NextGrenade);
-    PM_AddChatAlias(".next", "sm_nextgrenade");
-    PM_AddChatAlias(".nextid", "sm_nextgrenade");
-
     RegConsoleCmd("sm_clearnades", Command_ClearNades);
     PM_AddChatAlias(".clearnades", "sm_clearnades");
-
-    RegConsoleCmd("sm_savepos", Command_SavePos);
-    PM_AddChatAlias(".savepos", "sm_savepos");
   }
 
   // Spawn commands
@@ -375,7 +296,6 @@ public void OnPluginStart() {
   {
     RegConsoleCmd("sm_bot", Command_Bot);
     PM_AddChatAlias(".bot", "sm_bot");
-    PM_AddChatAlias(".addbot", "sm_bot");
 
     RegConsoleCmd("sm_tbot", Command_TBot);
     PM_AddChatAlias(".tbot", "sm_tbot");
@@ -453,77 +373,10 @@ public void OnPluginStart() {
 
   // Saved grenade location commands
   {
-    RegConsoleCmd("sm_gotogrenade", Command_GotoNade);
-    PM_AddChatAlias(".goto", "sm_gotogrenade");
-
-    RegConsoleCmd("sm_grenades", Command_Grenades);
-    PM_AddChatAlias(".nades", "sm_grenades");
-    PM_AddChatAlias(".grenades", "sm_grenades");
-
-    RegConsoleCmd("sm_find", Command_Find);
-    PM_AddChatAlias(".find", "sm_find");
-
-    RegConsoleCmd("sm_renamegrenade", Command_RenameGrenade);
-    PM_AddChatAlias(".rename", "sm_renamegrenade");
-
-    RegConsoleCmd("sm_savegrenade", Command_SaveGrenade);
-    PM_AddChatAlias(".addnade", "sm_savegrenade");
-    PM_AddChatAlias(".savenade", "sm_savegrenade");
-    PM_AddChatAlias(".save", "sm_savegrenade");
-
-    RegConsoleCmd("sm_movegrenade", Command_MoveGrenade);
-    PM_AddChatAlias(".resave", "sm_movegrenade");
-    PM_AddChatAlias(".move", "sm_movegrenade");
-
-    RegConsoleCmd("sm_savethrow", Command_SaveThrow);
-    PM_AddChatAlias(".savethrow", "sm_savethrow");
-    PM_AddChatAlias(".updatethrow", "sm_savethrow");
-
-    RegConsoleCmd("sm_updategrenade", Command_UpdateGrenade);
-    PM_AddChatAlias(".update", "sm_updategrenade");
-
-    RegConsoleCmd("sm_savedelay", Command_SetDelay);
-    PM_AddChatAlias(".setdelay", "sm_savedelay");
-    PM_AddChatAlias(".savedelay", "sm_savedelay");
-
-    RegConsoleCmd("sm_clearthrow", Command_ClearThrow);
-    PM_AddChatAlias(".clearthrow", "sm_clearthrow");
-
-    RegConsoleCmd("sm_adddescription", Command_GrenadeDescription);
-    PM_AddChatAlias(".desc", "sm_adddescription");
-
-    RegConsoleCmd("sm_deletegrenade", Command_DeleteGrenade);
-    PM_AddChatAlias(".delete", "sm_deletegrenade");
-
-    RegConsoleCmd("sm_categories", Command_Categories);
-
-    RegConsoleCmd("sm_addcategory", Command_AddCategory);
-    PM_AddChatAlias(".category", "sm_addcategory");
-    PM_AddChatAlias(".cat", "sm_addcategory");
-    PM_AddChatAlias(".cats", "sm_categories");
-    PM_AddChatAlias(".addcategory", "sm_addcategory");
-    PM_AddChatAlias(".addcat", "sm_addcategory");
-
-    RegConsoleCmd("sm_addcategories", Command_AddCategories);
-    PM_AddChatAlias(".addcats", "sm_addcategories");
-
-    RegConsoleCmd("sm_removecategory", Command_RemoveCategory);
-    PM_AddChatAlias(".removecategory", "sm_removecategory");
-    PM_AddChatAlias(".removecat", "sm_removecategory");
-
-    RegConsoleCmd("sm_deletecategory", Command_DeleteCategory);
-    PM_AddChatAlias(".deletecat", "sm_deletecategory");
-
-    RegConsoleCmd("sm_clearcategories", Command_ClearGrenadeCategories);
-    PM_AddChatAlias(".clearcats", "sm_clearcategories");
-
-    RegConsoleCmd("sm_copygrenade", Command_CopyGrenade);
-    PM_AddChatAlias(".copy", "sm_copygrenade");
-
     RegConsoleCmd("sm_respawn", Command_Respawn);
     PM_AddChatAlias(".respawn", "sm_respawn");
 
-    RegConsoleCmd("sm_stoprespawn", Command_Respawn);
+    RegConsoleCmd("sm_stoprespawn", Command_StopRespawn);
     PM_AddChatAlias(".stoprespawn", "sm_stoprespawn");
 
     RegConsoleCmd("sm_spec", Command_Spec);
@@ -553,6 +406,10 @@ public void OnPluginStart() {
 
     // TODO: A timer menu may be more accesible to users, as the number of timer types continues to
     // increase...
+    RegConsoleCmd("sm_timers", Command_TimersMenu);
+    PM_AddChatAlias(".timers", "sm_timers");
+    PM_AddChatAlias(".times", "sm_timers");
+
     RegConsoleCmd("sm_time", Command_Time);
     PM_AddChatAlias(".timer", "sm_time");
     PM_AddChatAlias(".time", "sm_time");
@@ -583,10 +440,6 @@ public void OnPluginStart() {
     RegConsoleCmd("sm_stopall", Command_StopAll);
     PM_AddChatAlias(".stop", "sm_stopall");
 
-    RegConsoleCmd("sm_roundrepeat", Command_RoundRepeat);
-    PM_AddChatAlias(".roundrepeat", "sm_roundrepeat");
-    PM_AddChatAlias(".rrepeat", "sm_roundrepeat");
-
     RegConsoleCmd("sm_dryrun", Command_DryRun);
     PM_AddChatAlias(".dry", "sm_dryrun");
     PM_AddChatAlias(".dryrun", "sm_dryrun");
@@ -608,27 +461,15 @@ public void OnPluginStart() {
   }
 
   // New Plugin cvars
-  g_AlphabetizeNadeMenusCvar = CreateConVar("sm_practicemode_alphabetize_nades", "0",
-                                            "Whether menus of grenades are alphabetized by name.");
   g_BotRespawnTimeCvar = CreateConVar("sm_practicemode_bot_respawn_time", "3.0",
                                       "How long it should take bots placed with .bot to respawn");
-  g_AutostartCvar = CreateConVar("sm_practicemode_autostart", "0",
-                                 "Whether the plugin is automatically started on mapstart");
   g_DryRunFreezeTimeCvar = CreateConVar("sm_practicemode_dry_run_freeze_time", "6",
                                         "Freezetime after running the .dryrun command.");
   g_MaxHistorySizeCvar = CreateConVar(
-      "sm_practicemode_max_grenade_history_size", "50000",
+      "sm_practicemode_max_grenade_history_size", "5",
       "Maximum number of previous grenade throws saved in temporary history per-client. The temporary history is reset every map change. Set to 0 to disable.");
-  g_MaxGrenadesSavedCvar = CreateConVar(
-      "sm_practicemode_max_grenades_saved", "512",
-      "Maximum number of grenades that may be saved per-map, per-client. Set to 0 to disable.");
-  g_PracModeCanBeStartedCvar =
-      CreateConVar("sm_practicemode_can_be_started", "1", "Whether practicemode may be started");
-  g_SharedAllNadesCvar = CreateConVar(
-      "sm_practicemode_share_all_nades", "0",
-      "When set to 1, grenades aren't per-user; they are shared amongst all users that have grenade access. Grenades are not displayed by user, but displayed in 1 grouping. Anyone on the server can edit other users' grenades.");
   g_MaxPlacedBotsCvar =
-      CreateConVar("sm_practicemode_max_placed_bots", "25",
+      CreateConVar("sm_practicemode_max_placed_bots", "10",
                    "Maximum number of static bots a single client may have placed at once.");
 
   g_FlashEffectiveThresholdCvar =
@@ -651,10 +492,6 @@ public void OnPluginStart() {
   // New cvars we don't want saved in the autoexec'd file
   g_InfiniteMoneyCvar = CreateConVar("sm_infinite_money", "0",
                                      "Whether clients recieve infinite money", FCVAR_DONTRECORD);
-  g_AllowNoclipCvar =
-      CreateConVar("sm_allow_noclip", "0",
-                   "Whether players may use .noclip in chat to toggle noclip", FCVAR_DONTRECORD);
-
   g_PatchGrenadeTrajectoryCvar =
       CreateConVar("sm_patch_grenade_trajectory_cvar", "1",
                    "Whether the plugin patches sv_grenade_trajectory with its own grenade trails");
@@ -682,19 +519,12 @@ public void OnPluginStart() {
 
   g_CTSpawns = new ArrayList();
   g_TSpawns = new ArrayList();
-  g_KnownNadeCategories = new ArrayList(GRENADE_CATEGORY_LENGTH);
 
   // Create client cookies.
   RegisterUserSetting(UserSetting_ShowAirtime, "practicemode_grenade_airtime", true,
-                      "Show grenade airtime");
-  RegisterUserSetting(UserSetting_LeaveNadeMenuOpen, "practicemode_leave_menu_open", false,
-                      "Leave .nades menu open after selection");
+                      "显示烟雾弹飞行时间");
   RegisterUserSetting(UserSetting_NoGrenadeTrajectory, "practicemode_no_traject", false,
-                      "Disable grenade trajectories");
-  RegisterUserSetting(UserSetting_SwitchToNadeOnSelect, "practicemode_use_ade", true,
-                      "Switch to nade on .nades select");
-  RegisterUserSetting(UserSetting_StopsRecordingInspectKey, "practicemode_stop_inspect", true,
-                      "Stop bot recording on inspect command");
+                      "隐藏投掷物轨迹");
 
   // Remove cheats so sv_cheats isn't required for this:
   RemoveCvarFlag(g_GrenadeTrajectoryCvar, FCVAR_CHEAT);
@@ -706,7 +536,6 @@ public void OnPluginStart() {
   HookEvent("player_death", Event_PlayerDeath);
   HookEvent("round_freeze_end", Event_FreezeEnd);
 
-  g_PugsetupLoaded = LibraryExists("pugsetup");
   g_CSUtilsLoaded = LibraryExists("csutils");
 
   CreateTimer(1.0, Timer_GivePlayersMoney, _, TIMER_REPEAT);
@@ -720,16 +549,11 @@ public void OnPluginEnd() {
 }
 
 public void OnLibraryAdded(const char[] name) {
-  g_PugsetupLoaded = LibraryExists("pugsetup");
   g_CSUtilsLoaded = LibraryExists("csutils");
   g_BotMimicLoaded = LibraryExists("botmimic");
-  if (LibraryExists("updater")) {
-    Updater_AddPlugin(UPDATE_URL);
-  }
 }
 
 public void OnLibraryRemoved(const char[] name) {
-  g_PugsetupLoaded = LibraryExists("pugsetup");
   g_CSUtilsLoaded = LibraryExists("csutils");
   g_BotMimicLoaded = LibraryExists("botmimic");
 }
@@ -738,18 +562,11 @@ public void OnLibraryRemoved(const char[] name) {
  * Silences all cvar changes in practice mode.
  */
 public Action Event_CvarChanged(Event event, const char[] name, bool dontBroadcast) {
-  if (g_InPracticeMode) {
-    event.BroadcastDisabled = true;
-  }
+  event.BroadcastDisabled = true;
   return Plugin_Continue;
 }
 
 public Action Event_PlayerSpawn(Event event, const char[] name, bool dontBroadcast) {
-  CheckAutoStart();
-  if (!g_InPracticeMode) {
-    return Plugin_Continue;
-  }
-
   int client = GetClientOfUserId(event.GetInt("userid"));
   if (IsPlayer(client) && g_SavedRespawnActive[client]) {
     TeleportEntity(client, g_SavedRespawnOrigin[client], g_SavedRespawnAngles[client], NULL_VECTOR);
@@ -768,7 +585,6 @@ public Action Event_PlayerSpawn(Event event, const char[] name, bool dontBroadca
 }
 
 public void OnClientConnected(int client) {
-  g_CurrentSavedGrenadeId[client] = -1;
   g_GrenadeHistoryIndex[client] = -1;
   ClearArray(g_GrenadeHistoryPositions[client]);
   ClearArray(g_GrenadeHistoryAngles[client]);
@@ -780,15 +596,12 @@ public void OnClientConnected(int client) {
   g_SavedRespawnActive[client] = false;
   g_LastGrenadeType[client] = GrenadeType_None;
   g_RunningRepeatedCommand[client] = false;
-  g_RunningRoundRepeatedCommandDelay[client].Clear();
-  g_RunningRoundRepeatedCommandArg[client].Clear();
-  CheckAutoStart();
+  g_OnCountDownRec[client] = false;
 }
 
 public void OnMapStart() {
   ReadPracticeSettings();
   g_BeamSprite = PrecacheModel("materials/sprites/laserbeam.vmt");
-  g_KnownNadeCategories.Clear();
 
   EnforceDirectoryExists("data/practicemode");
   EnforceDirectoryExists("data/practicemode/bots");
@@ -800,111 +613,47 @@ public void OnMapStart() {
   EnforceDirectoryExists("data/practicemode/replays");
   EnforceDirectoryExists("data/practicemode/replays/backups");
 
-  // This supports backwards compatability for grenades saved in the old location
-  // data/practicemode_grenades. The data is transferred to the new
-  // location if they are read from the legacy location.
-  char legacyDir[PLATFORM_MAX_PATH];
-  BuildPath(Path_SM, legacyDir, sizeof(legacyDir), "data/practicemode_grenades");
-
   char map[PLATFORM_MAX_PATH];
   GetCleanMapName(map, sizeof(map));
 
-  char legacyFile[PLATFORM_MAX_PATH];
-  Format(legacyFile, sizeof(legacyFile), "%s/%s.cfg", legacyDir, map);
-
-  BuildPath(Path_SM, g_GrenadeLocationsFile, sizeof(g_GrenadeLocationsFile),
-            "data/practicemode/grenades/%s.cfg", map);
-
-  if (!FileExists(g_GrenadeLocationsFile) && FileExists(legacyFile)) {
-    LogMessage("Moving legacy grenade data from %s to %s", legacyFile, g_GrenadeLocationsFile);
-    g_GrenadeLocationsKv = new KeyValues("Grenades");
-    g_GrenadeLocationsKv.ImportFromFile(legacyFile);
-    g_UpdatedGrenadeKv = true;
-  } else {
-    g_GrenadeLocationsKv = new KeyValues("Grenades");
-    g_GrenadeLocationsKv.ImportFromFile(g_GrenadeLocationsFile);
-    g_UpdatedGrenadeKv = false;
-  }
-
-  MaybeCorrectGrenadeIds();
-
-  FindGrenadeCategories();
   Spawns_MapStart();
   BotReplay_MapStart();
 }
 
 public void OnConfigsExecuted() {
-  // Disable legacy plugin if found.
-  char legacyPluginFile[PLATFORM_MAX_PATH];
-  BuildPath(Path_SM, legacyPluginFile, sizeof(legacyPluginFile),
-            "plugins/pugsetup_practicemode.smx");
-  if (FileExists(legacyPluginFile)) {
-    char disabledLegacyPluginName[PLATFORM_MAX_PATH];
-    BuildPath(Path_SM, disabledLegacyPluginName, sizeof(disabledLegacyPluginName),
-              "plugins/disabled/pugsetup_practicemode.smx");
-    ServerCommand("sm plugins unload pugsetup_practicemode");
-    if (FileExists(disabledLegacyPluginName))
-      DeleteFile(disabledLegacyPluginName);
-    RenameFile(disabledLegacyPluginName, legacyPluginFile);
-    LogMessage("%s was unloaded and moved to %s", legacyPluginFile, disabledLegacyPluginName);
-  }
-
-  CheckAutoStart();
-}
-
-public void CheckAutoStart() {
-  // Autostart practicemode if enabled.
-  if (g_AutostartCvar.IntValue != 0 && !g_InPracticeMode) {
-    bool pugsetup_live = g_PugsetupLoaded && PugSetup_GetGameState() != GameState_None;
-    if (!pugsetup_live) {
-      LaunchPracticeMode();
-    }
-  }
+  LaunchPracticeMode();
 }
 
 public void OnClientDisconnect(int client) {
-  MaybeWriteNewGrenadeData();
-
-  if (g_InPracticeMode) {
-    KickAllClientBots(client);
-  }
+  KickAllClientBots(client);
 
   g_IsPMBot[client] = false;
 
-  // If the server empties out, exit practice mode.
   int playerCount = 0;
   for (int i = 0; i <= MaxClients; i++) {
     if (IsPlayer(i)) {
       playerCount++;
     }
   }
-  if (playerCount == 0 && g_InPracticeMode) {
-    ExitPracticeMode();
+  if (playerCount == 0) {
+    ClearBots();
   }
 }
 
 public void OnMapEnd() {
-  MaybeWriteNewGrenadeData();
-
-  if (g_InPracticeMode) {
-    ExitPracticeMode();
-  }
-
+  ClearBots();
   Spawns_MapEnd();
   BotReplay_MapEnd();
-  delete g_GrenadeLocationsKv;
 }
 
-static void MaybeWriteNewGrenadeData() {
-  if (g_UpdatedGrenadeKv) {
-    g_GrenadeLocationsKv.Rewind();
-    BackupFiles("grenades");
-    DeleteFile(g_GrenadeLocationsFile);
-    if (!g_GrenadeLocationsKv.ExportToFile(g_GrenadeLocationsFile)) {
-      LogError("Failed to write grenade data to %s", g_GrenadeLocationsFile);
+public void ClearBots() {
+  for (int i = 1; i <= MaxClients; i++) {
+    if (IsClientInGame(i) && IsFakeClient(i) && g_IsPMBot[i]) {
+      KickClient(i);
+      g_IsPMBot[i] = false;
     }
-    g_UpdatedGrenadeKv = false;
   }
+  PM_MessageToAll("服务器空闲，Bot已清空");
 }
 
 public void OnClientSettingsChanged(int client) {
@@ -916,10 +665,6 @@ public void OnClientPutInServer(int client) {
 }
 
 static void UpdateClientCvars(int client) {
-  if (!g_InPracticeMode) {
-    return;
-  }
-
   QueryClientConVar(client, "cl_color", QueryClientColor, client);
   QueryClientConVar(client, "volume", QueryClientVolume, client);
 }
@@ -978,10 +723,6 @@ public void GetColor(ClientColor c, int array[4]) {
 public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3], float angles[3],
                       int& weapon, int& subtype, int& cmdnum, int& tickcount, int& seed,
                       int mouse[2]) {
-  if (!g_InPracticeMode) {
-    return Plugin_Continue;
-  }
-
   if (IsPMBot(client)) {
     if (g_BotCrouching[client]) {
       buttons |= IN_DUCK;
@@ -1030,65 +771,24 @@ public Action Command_TeamJoin(int client, const char[] command, int argc) {
   if (!IsValidClient(client) || argc < 1)
     return Plugin_Handled;
 
-  if (g_InPracticeMode) {
-    char arg[4];
-    GetCmdArg(1, arg, sizeof(arg));
-    int team = StringToInt(arg);
-    SwitchPlayerTeam(client, team);
+  char arg[4];
+  GetCmdArg(1, arg, sizeof(arg));
+  int team = StringToInt(arg);
+  SwitchPlayerTeam(client, team);
 
-    // Since we force respawns off during bot replay, make teamswitches respawn players.
-    if (g_InBotReplayMode && team != CS_TEAM_SPECTATOR && team != CS_TEAM_NONE) {
-      CS_RespawnPlayer(client);
-    }
-
-    return Plugin_Handled;
+  // Since we force respawns off during bot replay, make teamswitches respawn players.
+  if (g_InBotReplayMode && team != CS_TEAM_SPECTATOR && team != CS_TEAM_NONE) {
+    CS_RespawnPlayer(client);
   }
 
-  return Plugin_Continue;
-}
-
-public Action Command_Noclip(int client, const char[] command, int argc) {
-  PerformNoclipAction(client);
   return Plugin_Handled;
-}
 
-public Action Command_SetPos(int client, const char[] command, int argc) {
-  SetEntityMoveType(client, MOVETYPE_WALK);
-  return Plugin_Continue;
 }
 
 public Action OnClientSayCommand(int client, const char[] command, const char[] text) {
-  if (g_AllowNoclipCvar.IntValue != 0 && StrEqual(text, ".noclip") && IsPlayer(client)) {
-    PerformNoclipAction(client);
-  }
-}
-
-public void PerformNoclipAction(int client) {
-  // The move type is also set on the next frame. This is a dirty trick to deal
-  // with clients that have a double-bind of "noclip; say .noclip" to work on both
-  // ESEA-practice and local sv_cheats servers. Since this plugin can have both enabled
-  // (sv_cheats and allow noclip), this double bind would cause the noclip type to be toggled twice.
-  // Therefore the fix is to only perform 1 noclip action per-frame per-client at most, implemented
-  // by saving the frame count of each use in g_LastNoclipCommand.
-  if (g_LastNoclipCommand[client] == GetGameTickCount() ||
-      (g_AllowNoclipCvar.IntValue == 0 && GetCvarIntSafe("sv_cheats") == 0)) {
-    return;
-  }
-
-  // Stop recording if we are.
-  if (g_BotMimicLoaded && g_InBotReplayMode) {
-    FinishRecording(client, false);
-  }
-
-  g_LastNoclipCommand[client] = GetGameTickCount();
-  MoveType t = GetEntityMoveType(client);
-  MoveType next = (t == MOVETYPE_WALK) ? MOVETYPE_NOCLIP : MOVETYPE_WALK;
-  SetEntityMoveType(client, next);
-
-  if (next == MOVETYPE_WALK) {
-    SetEntProp(client, Prop_Data, "m_CollisionGroup", 5);
-  } else {
-    SetEntProp(client, Prop_Data, "m_CollisionGroup", 0);
+  if (IsPlayer(client) && g_OnCountDownRec[client] && StrEqual(command, "say")) {
+    ClientCommand(client, "sm_countdown %s", text);
+    g_OnCountDownRec[client] = false;
   }
 }
 
@@ -1167,7 +867,7 @@ public void ReadPracticeSettings() {
   }
   if (g_MapList.Length == 0) {
     g_MapList.PushString("de_cache");
-    g_MapList.PushString("de_cbble");
+    g_MapList.PushString("de_ancient");
     g_MapList.PushString("de_dust2");
     g_MapList.PushString("de_inferno");
     g_MapList.PushString("de_mirage");
@@ -1186,15 +886,13 @@ public void ReadPracticeSettings() {
 public void LaunchPracticeMode() {
   ServerCommand("exec sourcemod/practicemode_start.cfg");
 
-  g_InPracticeMode = true;
   ReadPracticeSettings();
   for (int i = 0; i < g_BinaryOptionNames.Length; i++) {
     ChangeSetting(i, PM_IsSettingEnabled(i), false, true);
   }
-
-  PM_MessageToAll("Practice mode is now enabled.");
-  Call_StartForward(g_OnPracticeModeEnabled);
-  Call_Finish();
+  g_InDryRun = false;
+  strcopy(MESSAGE_PREFIX, sizeof(MESSAGE_PREFIX), "[{LIGHT_GREEN}练习模式{NORMAL}]");
+  PM_MessageToAll("练习模式初始化完成~");
 }
 
 stock bool ChangeSetting(int index, bool enabled, bool print = true, bool force_setting = false) {
@@ -1237,7 +935,7 @@ stock bool ChangeSetting(int index, bool enabled, bool print = true, bool force_
     char enabledString[32];
     GetEnabledString(enabledString, sizeof(enabledString), enabled);
     if (!StrEqual(name, "")) {
-      PM_MessageToAll("%s is now %s.", name, enabledString);
+      PM_MessageToAll("设置 [{GRAY}%s{NORMAL}] %s.", name, enabledString);
     }
   }
 
@@ -1249,46 +947,6 @@ stock bool ChangeSetting(int index, bool enabled, bool print = true, bool force_
   Call_Finish();
 
   return true;
-}
-
-public void ExitPracticeMode() {
-  if (!g_InPracticeMode) {
-    return;
-  }
-
-  Call_StartForward(g_OnPracticeModeDisabled);
-  Call_Finish();
-
-  for (int i = 1; i <= MaxClients; i++) {
-    if (IsClientInGame(i) && IsFakeClient(i) && g_IsPMBot[i]) {
-      KickClient(i);
-      g_IsPMBot[i] = false;
-    }
-  }
-
-  for (int i = 0; i < g_BinaryOptionNames.Length; i++) {
-    ChangeSetting(i, false, false);
-
-    // Restore the cvar values if they haven't already been.
-    Handle cvarRestore = g_BinaryOptionCvarRestore.Get(i);
-    if (cvarRestore != INVALID_HANDLE) {
-      RestoreCvars(cvarRestore, true);
-      g_BinaryOptionCvarRestore.Set(i, INVALID_HANDLE);
-    }
-  }
-
-  g_InPracticeMode = false;
-
-  // force turn noclip off for everyone
-  for (int i = 1; i <= MaxClients; i++) {
-    g_TestingFlash[i] = false;
-    if (IsValidClient(i)) {
-      SetEntityMoveType(i, MOVETYPE_WALK);
-    }
-  }
-
-  ServerCommand("exec sourcemod/practicemode_end.cfg");
-  PM_MessageToAll("Practice mode is now disabled.");
 }
 
 public Action Timer_GivePlayersMoney(Handle timer) {
@@ -1339,7 +997,7 @@ public int DelayedOnEntitySpawned(int entity) {
   if (IsGrenadeProjectile(className)) {
     // Get the cl_color value for the client that threw this grenade.
     int client = Entity_GetOwner(entity);
-    if (IsPlayer(client) && g_InPracticeMode &&
+    if (IsPlayer(client) &&
         GrenadeFromProjectileName(className) == GrenadeType_Smoke) {
       int index = g_ClientGrenadeThrowTimes[client].Push(EntIndexToEntRef(entity));
       g_ClientGrenadeThrowTimes[client].Set(index, view_as<int>(GetEngineTime()), 1);
@@ -1352,11 +1010,9 @@ public int DelayedOnEntitySpawned(int entity) {
           if (!IsClientConnected(i) || !IsClientInGame(i)) {
             continue;
           }
-
           if (GetSetting(client, UserSetting_NoGrenadeTrajectory)) {
             continue;
           }
-
           // Note: the technique using temporary entities is taken from InternetBully's NadeTails
           // plugin which you can find at https://forums.alliedmods.net/showthread.php?t=240668
           float time = (GetClientTeam(i) == CS_TEAM_SPECTATOR) ? g_GrenadeSpecTimeCvar.FloatValue
@@ -1396,7 +1052,7 @@ public int DelayedOnEntitySpawned(int entity) {
 
 public Action Timer_TeleportClient(Handle timer, int serial) {
   int client = GetClientFromSerial(serial);
-  if (g_InPracticeMode && IsPlayer(client) && g_TestingFlash[client]) {
+  if (IsPlayer(client) && g_TestingFlash[client]) {
     float velocity[3];
     TeleportEntity(client, g_TestingFlashOrigins[client], g_TestingFlashAngles[client], velocity);
     SetEntityMoveType(client, MOVETYPE_NONE);
@@ -1405,31 +1061,13 @@ public Action Timer_TeleportClient(Handle timer, int serial) {
 
 public Action Timer_FakeGrenadeBack(Handle timer, int serial) {
   int client = GetClientFromSerial(serial);
-  if (g_InPracticeMode && IsPlayer(client)) {
+  if (IsPlayer(client)) {
     FakeClientCommand(client, "sm_lastgrenade");
   }
 }
 
-public Action Event_WeaponFired(Event event, const char[] name, bool dontBroadcast) {
-  if (!g_InPracticeMode) {
-    return;
-  }
-
-  int userid = event.GetInt("userid");
-  int client = GetClientOfUserId(userid);
-  char weapon[CLASS_LENGTH];
-  event.GetString("weapon", weapon, sizeof(weapon));
-
-  if (IsGrenadeWeapon(weapon) && IsPlayer(client)) {
-    AddGrenadeToHistory(client);
-  }
-}
-
 public Action Event_SmokeDetonate(Event event, const char[] name, bool dontBroadcast) {
-  if (!g_InPracticeMode) {
-    return;
-  }
-  GrenadeDetonateTimerHelper(event, "smoke grenade");
+  GrenadeDetonateTimerHelper(event, "烟雾弹");
 }
 
 public void GrenadeDetonateTimerHelper(Event event, const char[] grenadeName) {
@@ -1444,7 +1082,7 @@ public void GrenadeDetonateTimerHelper(Event event, const char[] grenadeName) {
         float dt = GetEngineTime() - view_as<float>(g_ClientGrenadeThrowTimes[client].Get(i, 1));
         g_ClientGrenadeThrowTimes[client].Erase(i);
         if (GetSetting(client, UserSetting_ShowAirtime)) {
-          PM_Message(client, "Airtime of %s: %.1f seconds", grenadeName, dt);
+          PM_Message(client, "%s飞行时间:\x05 %.1f\x01 秒", grenadeName, dt);
         }
         break;
       }
@@ -1453,10 +1091,6 @@ public void GrenadeDetonateTimerHelper(Event event, const char[] grenadeName) {
 }
 
 public Action Event_FlashDetonate(Event event, const char[] name, bool dontBroadcast) {
-  if (!g_InPracticeMode) {
-    return;
-  }
-
   int userid = event.GetInt("userid");
   int client = GetClientOfUserId(userid);
   if (IsPlayer(client) && g_TestingFlash[client]) {
@@ -1472,10 +1106,10 @@ public void GetTestingFlashInfo(int serial) {
   int client = GetClientFromSerial(serial);
   if (IsPlayer(client) && g_TestingFlash[client]) {
     float flashDuration = GetFlashDuration(client);
-    PM_Message(client, "Flash duration: %.1f seconds", flashDuration);
+    PM_Message(client, "闪光持续时间: \x05%.1f \x01秒", flashDuration);
 
     if (flashDuration < g_FlashEffectiveThresholdCvar.FloatValue) {
-      PM_Message(client, "Ineffective flash");
+      PM_Message(client, "{DARK_RED}无效的闪光{NORMAL}");
       CreateTimer(1.0, Timer_FakeGrenadeBack, GetClientSerial(client));
     } else {
       float delay = flashDuration - 1.0;
@@ -1488,10 +1122,6 @@ public void GetTestingFlashInfo(int serial) {
 }
 
 public Action Event_FreezeEnd(Event event, const char[] name, bool dontBroadcast) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   for (int i = 1; i <= MaxClients; i++) {
     if (!IsPlayer(i)) {
       continue;
@@ -1499,15 +1129,13 @@ public Action Event_FreezeEnd(Event event, const char[] name, bool dontBroadcast
 
     if (g_ClientNoFlash[i]) {
       g_ClientNoFlash[i] = false;
-      PM_Message(i, "Disabled noflash on round start.");
+      PM_Message(i, "在回合开始时禁用闪光屏蔽");
     }
 
     if (GetEntityMoveType(i) == MOVETYPE_NOCLIP) {
       SetEntityMoveType(i, MOVETYPE_WALK);
-      PM_Message(i, "Disabled noclip on round start.");
+      PM_Message(i, "在回合开始时禁用飞行");
     }
-
-    FreezeEnd_RoundRepeat(i);
   }
 
   return Plugin_Handled;
@@ -1558,51 +1186,18 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
     }
   }
 
-  if (!g_PugsetupLoaded) {
-    if (StrEqual(chatCommand, ".setup")) {
-      if (CheckCommandAccess(client, "sm_prac", ADMFLAG_CHANGEMAP)) {
-        GivePracticeMenu(client);
-      } else {
-        PM_Message(client, "You don't have permission to access practicemode.");
-      }
-    } else if (StrEqual(chatCommand, ".help")) {
-      ShowHelpInfo(client);
-    }
+  if (StrEqual(chatCommand, ".help")) {
+  // TODO 
   }
-}
-
-public void ShowHelpInfo(int client) {
-  char url[256];
-  char version[64];
-#if defined COMMIT_STRING_LONG
-  Format(version, sizeof(version), COMMIT_STRING_LONG);
-#else
-  Format(version, sizeof(version), PLUGIN_VERSION);
-#endif
-
-  Format(url, sizeof(url), "http://whiffcity.com/redirect_practicemode_help_version/%s", version);
-  ShowMOTDPanel(client, "Practicemode Help", url, MOTDPANEL_TYPE_URL);
-  QueryClientConVar(client, "cl_disablehtmlmotd", CheckMOTDAllowed, client);
-}
-
-public void CheckMOTDAllowed(QueryCookie cookie, int client, ConVarQueryResult result,
-                      const char[] cvarName, const char[] cvarValue) {
-  if (!StrEqual(cvarValue, "0")) {
-    PrintToChat(client, "You must have \x04cl_disablehtmlmotd 0 \x01to use that command.");
-  }
-}
-
-bool CanStartPracticeMode(int client) {
-  if (g_PracModeCanBeStartedCvar.IntValue == 0) {
-    return false;
-  }
-  return CheckCommandAccess(client, "sm_prac", ADMFLAG_CHANGEMAP);
 }
 
 public void CSU_OnThrowGrenade(int client, int entity, GrenadeType grenadeType, const float origin[3],
                         const float velocity[3]) {
-  g_LastGrenadeType[client] = grenadeType;
-  g_LastGrenadeOrigin[client] = origin;
-  g_LastGrenadeVelocity[client] = velocity;
-  Replays_OnThrowGrenade(client, entity, grenadeType, origin, velocity);
+  if (IsPlayer(client)) {
+    AddGrenadeToHistory(client);
+    g_LastGrenadeType[client] = grenadeType;
+    g_LastGrenadeOrigin[client] = origin;
+    g_LastGrenadeVelocity[client] = velocity;
+    Replays_OnThrowGrenade(client, entity, grenadeType, origin, velocity);
+  }
 }

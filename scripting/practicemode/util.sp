@@ -1,11 +1,8 @@
 #include <cstrike>
 #include <sdktools>
 
-#define DEFAULT_MENU_LENGTH 128
-
-#tryinclude "manual_version.sp"
 #if !defined PLUGIN_VERSION
-#define PLUGIN_VERSION "1.3.4-dev"
+#define PLUGIN_VERSION "0.1"
 #endif
 
 static char _colorNames[][] = {"{NORMAL}", "{DARK_RED}",    "{PINK}",      "{GREEN}",
@@ -99,9 +96,9 @@ stock int FindAndErase(ArrayList array, int value) {
 
 stock void GetEnabledString(char[] buffer, int length, bool variable, int client = LANG_SERVER) {
   if (variable)
-    Format(buffer, length, "enabled");
+    Format(buffer, length, "\x05已启用\x01");
   else
-    Format(buffer, length, "disabled");
+    Format(buffer, length, "\x02已禁用\x01");
 }
 
 stock int GetCvarIntSafe(const char[] cvarName, int defaultValue = 0) {
@@ -314,7 +311,7 @@ stock void ReadCvarKv(KeyValues kv, ArrayList cvars, ArrayList values) {
 }
 
 stock void ChangeMap(const char[] map, float delay = 3.0) {
-  PM_MessageToAll("Changing map to %s...", map);
+  PM_MessageToAll("即将更换地图{GREEN} %s{NORMAL} ...", map);
   DataPack pack = CreateDataPack();
   pack.WriteString(map);
   CreateTimer(delay, Timer_DelayedChangeMap, pack);

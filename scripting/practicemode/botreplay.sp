@@ -149,10 +149,6 @@ public void GetReplayBots() {
 }
 
 public Action Command_Replay(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (!g_BotMimicLoaded) {
     PM_Message(client, "You need the botmimic plugin loaded to use replay functions.");
     return Plugin_Handled;
@@ -200,10 +196,6 @@ void GiveReplayMenuInContext(int client) {
 }
 
 public Action Command_Replays(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (!g_BotMimicLoaded) {
     PM_Message(client, "You need the botmimic plugin loaded to use replay functions.");
     return Plugin_Handled;
@@ -223,10 +215,6 @@ public Action Command_Replays(int client, int args) {
 }
 
 public Action Command_NameReplay(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (!g_InBotReplayMode) {
     PM_Message(client, "You're not in bot replay mode: use .replays first.");
     return Plugin_Handled;
@@ -248,10 +236,6 @@ public Action Command_NameReplay(int client, int args) {
 }
 
 public Action Command_NameRole(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (!g_InBotReplayMode) {
     PM_Message(client, "You're not in bot replay mode: use .replays first.");
     return Plugin_Handled;
@@ -277,10 +261,6 @@ public Action Command_NameRole(int client, int args) {
 }
 
 public Action Command_PlayRecording(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (!g_InBotReplayMode) {
     PM_Message(client, "You're not in bot replay mode: use .replays first.");
     return Plugin_Handled;
@@ -349,10 +329,6 @@ public void ResetData() {
 }
 
 public void BotMimic_OnPlayerMimicLoops(int client) {
-  if (!g_InPracticeMode) {
-    return;
-  }
-
   if (g_StopBotSignal[client]) {
     BotMimic_ResetPlayback(client);
     BotMimic_StopPlayerMimic(client);
@@ -363,10 +339,6 @@ public void BotMimic_OnPlayerMimicLoops(int client) {
 }
 
 public Action Timer_CleanupLivingBots(Handle timer) {
-  if (!g_InPracticeMode) {
-    return Plugin_Continue;
-  }
-
   if (g_InBotReplayMode) {
     for (int i = 1; i <= MaxClients; i++) {
       if (IsReplayBot(i) && !BotMimic_IsPlayerMimicing(i)) {
@@ -379,7 +351,7 @@ public Action Timer_CleanupLivingBots(Handle timer) {
 }
 
 public Action Event_ReplayBotDamageDealtEvent(Event event, const char[] name, bool dontBroadcast) {
-  if (!g_InPracticeMode || !g_InBotReplayMode || !g_BotMimicLoaded) {
+  if (!g_InBotReplayMode || !g_BotMimicLoaded) {
     return Plugin_Continue;
   }
 

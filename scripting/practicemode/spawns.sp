@@ -33,10 +33,6 @@ public void Spawns_MapEnd() {
 }
 
 public Action Command_SaveSpawn(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   char arg[64];
   if (args >= 1 && GetCmdArg(1, arg, sizeof(arg))) {
     int team = GetClientTeam(client);
@@ -64,10 +60,6 @@ public Action Command_GotoSpawnCT(int client, int args) {
 }
 
 public Action SpawnCommandWrapper(int client, int args, int team) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (!IsPlayerAlive(client)) {
     CS_RespawnPlayer(client);
     return Plugin_Handled;
@@ -120,10 +112,6 @@ public Action SpawnCommandWrapper(int client, int args, int team) {
 }
 
 public Action Command_GotoWorstSpawn(int client, int args) {
-  if (!g_InPracticeMode) {
-    return Plugin_Handled;
-  }
-
   if (IsPlayer(client)) {
     ArrayList spawnList = null;
     if (GetClientTeam(client) == CS_TEAM_CT) {
