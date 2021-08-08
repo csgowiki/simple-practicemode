@@ -239,8 +239,6 @@ public Action Timer_RepeatCommand(Handle timer, int serial) {
 public Action Command_StopRepeat(int client, int args) {
   if (g_RunningRepeatedCommand[client]) {
     g_RunningRepeatedCommand[client] = false;
-    g_RunningRoundRepeatedCommandArg[client].Clear();
-    g_RunningRoundRepeatedCommandDelay[client].Clear();
     PM_Message(client, "取消重复执行命令");
   }
   return Plugin_Handled;

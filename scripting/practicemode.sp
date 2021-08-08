@@ -49,7 +49,6 @@ ArrayList g_ChatAliasesCommands;
 ConVar g_BotRespawnTimeCvar;
 ConVar g_DryRunFreezeTimeCvar;
 ConVar g_MaxHistorySizeCvar;
-ConVar g_SharedAllNadesCvar;
 ConVar g_FastfowardRequiresZeroVolumeCvar;
 ConVar g_MaxPlacedBotsCvar;
 
@@ -84,12 +83,6 @@ ConVar g_VersionCvar;
 #define GRENADE_CATEGORY_LENGTH 128
 #define AUTH_LENGTH 64
 #define AUTH_METHOD AuthId_Steam2
-char g_GrenadeLocationsFile[PLATFORM_MAX_PATH];
-KeyValues
-    g_GrenadeLocationsKv;  // Inside any global function, we expect this to be at the root level.
-int g_CurrentSavedGrenadeId[MAXPLAYERS + 1];
-bool g_UpdatedGrenadeKv = false;  // whether there has been any changed the kv structure this map
-int g_NextID = 0;
 
 // Grenade history data
 int g_GrenadeHistoryIndex[MAXPLAYERS + 1];
@@ -107,9 +100,6 @@ float g_LastFlashDetonateTime[MAXPLAYERS + 1];
 
 bool g_RunningRepeatedCommand[MAXPLAYERS + 1];
 char g_RunningRepeatedCommandArg[MAXPLAYERS][256];
-
-ArrayList g_RunningRoundRepeatedCommandDelay[MAXPLAYERS + 1]; /* float */
-ArrayList g_RunningRoundRepeatedCommandArg[MAXPLAYERS + 1];   /* char[256] */
 
 GrenadeType g_LastGrenadeType[MAXPLAYERS + 1];
 float g_LastGrenadeOrigin[MAXPLAYERS + 1][3];
@@ -200,8 +190,6 @@ Handle g_OnPracticeModeSettingsRead = INVALID_HANDLE;
 
 #define CHICKEN_MODEL "models/chicken/chicken.mdl"
 
-#include "practicemode/grenade_iterators.sp"
-
 #include "practicemode/botreplay.sp"
 #include "practicemode/botreplay_data.sp"
 #include "practicemode/botreplay_editor.sp"
@@ -213,7 +201,6 @@ Handle g_OnPracticeModeSettingsRead = INVALID_HANDLE;
 #include "practicemode/commands.sp"
 #include "practicemode/debug.sp"
 #include "practicemode/grenade_commands.sp"
-#include "practicemode/grenade_filters.sp"
 #include "practicemode/grenade_utils.sp"
 #include "practicemode/natives.sp"
 #include "practicemode/settings_menu.sp"
@@ -263,8 +250,6 @@ public void OnPluginStart() {
     g_GrenadeHistoryAngles[i] = new ArrayList(3);
     g_ClientGrenadeThrowTimes[i] = new ArrayList(2);
     g_ClientBots[i] = new ArrayList();
-    g_RunningRoundRepeatedCommandArg[i] = new ArrayList(256);
-    g_RunningRoundRepeatedCommandDelay[i] = new ArrayList();
   }
 
   {
@@ -275,11 +260,6 @@ public void OnPluginStart() {
         "practicemode_debuginfo", Command_DebugInfo, ADMFLAG_CHANGEMAP,
         "Dumps debug info to a file (addons/sourcemod/logs/practicemode_debuginfo.txt by default)");
   }
-
-  RegAdminCmd("sm_translategrenades", Command_TranslateGrenades, ADMFLAG_CHANGEMAP,
-              "Translates all grenades on this map");
-  RegAdminCmd("sm_fixgrenades", Command_FixGrenades, ADMFLAG_CHANGEMAP,
-              "Reset grenade ids so they are consecutive and start at 1.");
 
   // Grenade history commands
   {
@@ -494,9 +474,6 @@ public void OnPluginStart() {
   g_MaxHistorySizeCvar = CreateConVar(
       "sm_practicemode_max_grenade_history_size", "5",
       "Maximum number of previous grenade throws saved in temporary history per-client. The temporary history is reset every map change. Set to 0 to disable.");
-  g_SharedAllNadesCvar = CreateConVar(
-      "sm_practicemode_share_all_nades", "0",
-      "When set to 1, grenades aren't per-user; they are shared amongst all users that have grenade access. Grenades are not displayed by user, but displayed in 1 grouping. Anyone on the server can edit other users' grenades.");
   g_MaxPlacedBotsCvar =
       CreateConVar("sm_practicemode_max_placed_bots", "25",
                    "Maximum number of static bots a single client may have placed at once.");
@@ -622,7 +599,6 @@ public Action Event_PlayerSpawn(Event event, const char[] name, bool dontBroadca
 }
 
 public void OnClientConnected(int client) {
-  g_CurrentSavedGrenadeId[client] = -1;
   g_GrenadeHistoryIndex[client] = -1;
   ClearArray(g_GrenadeHistoryPositions[client]);
   ClearArray(g_GrenadeHistoryAngles[client]);
@@ -634,8 +610,6 @@ public void OnClientConnected(int client) {
   g_SavedRespawnActive[client] = false;
   g_LastGrenadeType[client] = GrenadeType_None;
   g_RunningRepeatedCommand[client] = false;
-  g_RunningRoundRepeatedCommandDelay[client].Clear();
-  g_RunningRoundRepeatedCommandArg[client].Clear();
 }
 
 public void OnMapStart() {
@@ -665,23 +639,6 @@ public void OnMapStart() {
   char legacyFile[PLATFORM_MAX_PATH];
   Format(legacyFile, sizeof(legacyFile), "%s/%s.cfg", legacyDir, map);
 
-  BuildPath(Path_SM, g_GrenadeLocationsFile, sizeof(g_GrenadeLocationsFile),
-            "data/practicemode/grenades/%s.cfg", map);
-
-  if (!FileExists(g_GrenadeLocationsFile) && FileExists(legacyFile)) {
-    LogMessage("Moving legacy grenade data from %s to %s", legacyFile, g_GrenadeLocationsFile);
-    g_GrenadeLocationsKv = new KeyValues("Grenades");
-    g_GrenadeLocationsKv.ImportFromFile(legacyFile);
-    g_UpdatedGrenadeKv = true;
-  } else {
-    g_GrenadeLocationsKv = new KeyValues("Grenades");
-    g_GrenadeLocationsKv.ImportFromFile(g_GrenadeLocationsFile);
-    g_UpdatedGrenadeKv = false;
-  }
-
-  MaybeCorrectGrenadeIds();
-
-  FindGrenadeCategories();
   Spawns_MapStart();
   BotReplay_MapStart();
 }
@@ -706,8 +663,6 @@ public void OnConfigsExecuted() {
 }
 
 public void OnClientDisconnect(int client) {
-  MaybeWriteNewGrenadeData();
-
   KickAllClientBots(client);
 
   g_IsPMBot[client] = false;
@@ -725,11 +680,9 @@ public void OnClientDisconnect(int client) {
 }
 
 public void OnMapEnd() {
-  MaybeWriteNewGrenadeData();
   ClearBots();
   Spawns_MapEnd();
   BotReplay_MapEnd();
-  delete g_GrenadeLocationsKv;
 }
 
 public void ClearBots() {
@@ -740,18 +693,6 @@ public void ClearBots() {
     }
   }
   PM_MessageToAll("服务器空闲，Bot已清空");
-}
-
-static void MaybeWriteNewGrenadeData() {
-  if (g_UpdatedGrenadeKv) {
-    g_GrenadeLocationsKv.Rewind();
-    BackupFiles("grenades");
-    DeleteFile(g_GrenadeLocationsFile);
-    if (!g_GrenadeLocationsKv.ExportToFile(g_GrenadeLocationsFile)) {
-      LogError("Failed to write grenade data to %s", g_GrenadeLocationsFile);
-    }
-    g_UpdatedGrenadeKv = false;
-  }
 }
 
 public void OnClientSettingsChanged(int client) {
