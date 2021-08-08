@@ -230,7 +230,6 @@ public void OnPluginStart() {
   ReadPracticeSettings();
 
   // Setup stuff for grenade history
-  HookEvent("weapon_fire", Event_WeaponFired);
   HookEvent("flashbang_detonate", Event_FlashDetonate);
   HookEvent("smokegrenade_detonate", Event_SmokeDetonate);
   HookEvent("player_blind", Event_PlayerBlind);
@@ -882,7 +881,7 @@ public void LaunchPracticeMode() {
     ChangeSetting(i, PM_IsSettingEnabled(i), false, true);
   }
   g_InDryRun = false;
-  strcopy(MESSAGE_PREFIX, sizeof(MESSAGE_PREFIX), "[{LIGHT_GREEN}练习模式{NORMAL}");
+  strcopy(MESSAGE_PREFIX, sizeof(MESSAGE_PREFIX), "[{LIGHT_GREEN}练习模式{NORMAL}]");
   PM_MessageToAll("练习模式初始化完成~");
 }
 
@@ -1057,17 +1056,6 @@ public Action Timer_FakeGrenadeBack(Handle timer, int serial) {
   }
 }
 
-public Action Event_WeaponFired(Event event, const char[] name, bool dontBroadcast) {
-  int userid = event.GetInt("userid");
-  int client = GetClientOfUserId(userid);
-  char weapon[CLASS_LENGTH];
-  event.GetString("weapon", weapon, sizeof(weapon));
-
-  if (IsGrenadeWeapon(weapon) && IsPlayer(client)) {
-    AddGrenadeToHistory(client);
-  }
-}
-
 public Action Event_SmokeDetonate(Event event, const char[] name, bool dontBroadcast) {
   GrenadeDetonateTimerHelper(event, "烟雾弹");
 }
@@ -1195,8 +1183,11 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
 
 public void CSU_OnThrowGrenade(int client, int entity, GrenadeType grenadeType, const float origin[3],
                         const float velocity[3]) {
-  g_LastGrenadeType[client] = grenadeType;
-  g_LastGrenadeOrigin[client] = origin;
-  g_LastGrenadeVelocity[client] = velocity;
-  Replays_OnThrowGrenade(client, entity, grenadeType, origin, velocity);
+  if (IsPlayer(client)) {
+    AddGrenadeToHistory(client);
+    g_LastGrenadeType[client] = grenadeType;
+    g_LastGrenadeOrigin[client] = origin;
+    g_LastGrenadeVelocity[client] = velocity;
+    Replays_OnThrowGrenade(client, entity, grenadeType, origin, velocity);
+  }
 }

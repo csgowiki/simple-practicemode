@@ -3,7 +3,7 @@ stock int CreateBot(int client, bool forceCrouch, const char[] providedName = ""
   if (g_ClientBots[client].Length >= g_MaxPlacedBotsCvar.IntValue) {
     PM_Message(
         client,
-        "You have too many bots (%d) added. Remove some with .deletebot or the .bots menu to add more.",
+        "{LIGHT_RED}你已经添加了太多(%d)Bot, 输入.nobot删除一些{NORMAL}",
         g_ClientBots[client].Length);
     return -1;
   }
@@ -26,7 +26,7 @@ stock int CreateBot(int client, bool forceCrouch, const char[] providedName = ""
 
   int bot = CreateFakeClient(name);
   if (bot <= 0) {
-    PM_Message(client, "Failed to create bot :(");
+    PM_Message(client, "{LIGHT_RED}创建Bot失败{NORMAL} :(");
     return -1;
   }
 
@@ -201,7 +201,7 @@ public Action Command_Bot(int client, int args) {
   GetClientEyeAngles(client, g_BotSpawnAngles[bot]);
   GetClientWeapon(client, g_BotSpawnWeapon[bot], CLASS_LENGTH);
   GiveBotParams(bot);
-  PM_Message(client, "Created bot, use .nobot to remove it.");
+  PM_Message(client, "已创建Bot, 输入{GREEN} .nobot {NORMAL}来删除准星指向的Bot");
   TemporarilyDisableCollisions(client, bot);
   return Plugin_Handled;
 }
@@ -221,7 +221,7 @@ public Action Command_CTBot(int client, int args) {
   GetClientEyeAngles(client, g_BotSpawnAngles[bot]);
   GetClientWeapon(client, g_BotSpawnWeapon[bot], CLASS_LENGTH);
   GiveBotParams(bot);
-  PM_Message(client, "Created bot, use .nobot to remove it.");
+  PM_Message(client, "已创建Bot, 输入{GREEN} .nobot {NORMAL}来删除准星指向的Bot");
   TemporarilyDisableCollisions(client, bot);
   return Plugin_Handled;
 }
@@ -241,7 +241,7 @@ public Action Command_TBot(int client, int args) {
   GetClientEyeAngles(client, g_BotSpawnAngles[bot]);
   GetClientWeapon(client, g_BotSpawnWeapon[bot], CLASS_LENGTH);
   GiveBotParams(bot);
-  PM_Message(client, "Created bot, use .nobot to remove it.");
+  PM_Message(client, "已创建Bot, 输入{GREEN} .nobot {NORMAL}来删除准星指向的Bot");
   TemporarilyDisableCollisions(client, bot);
   return Plugin_Handled;
 }
@@ -278,7 +278,7 @@ public Action Command_CrouchBot(int client, int args) {
   GiveBotParams(bot);
 
   TemporarilyDisableCollisions(client, bot);
-  PM_Message(client, "Created bot, use .nobot to remove it.");
+  PM_Message(client, "已创建Bot, 输入{GREEN} .nobot {NORMAL}来删除准星指向的Bot");
   return Plugin_Handled;
 }
 
@@ -307,7 +307,7 @@ public Action Command_BotPlace(int client, int args) {
     GiveBotParams(bot);
   }
 
-  PM_Message(client, "Created bot, use .nobot to remove it.");
+  PM_Message(client, "已创建Bot, 输入{GREEN} .nobot {NORMAL}来删除准星指向的Bot");
   return Plugin_Handled;
 }
 
@@ -327,7 +327,7 @@ public Action Command_Boost(int client, int args) {
 
   origin[2] += PLAYER_HEIGHT + 4.0;
   TeleportEntity(client, origin, NULL_VECTOR, NULL_VECTOR);
-  PM_Message(client, "Created bot, use .nobot to remove it.");
+  PM_Message(client, "已创建Bot, 输入{GREEN} .nobot {NORMAL}来删除准星指向的Bot");
   return Plugin_Handled;
 }
 
@@ -347,7 +347,7 @@ public Action Command_CrouchBoost(int client, int args) {
 
   origin[2] += CROUCH_PLAYER_HEIGHT + 4.0;
   TeleportEntity(client, origin, NULL_VECTOR, NULL_VECTOR);
-  PM_Message(client, "Created bot, use .nobot to remove it.");
+  PM_Message(client, "已创建Bot, 输入{GREEN} .nobot {NORMAL}来删除准星指向的Bot");
   return Plugin_Handled;
 }
 
@@ -368,10 +368,10 @@ public Action Command_RemoveBot(int client, int args) {
       KickClientBot(client, botIndex);
       return Plugin_Handled;
     } else {
-      PM_Message(client, "You can only kick your own bots.");
+      PM_Message(client, "{LIGHT_RED}你只能删除自己创建的Bot{NORMAL}");
     }
   } else {
-    PM_Message(client, "No bot found. Aim at the bot you want to remove.");
+    PM_Message(client, "{LIGHT_RED}未找到Bot，请瞄准需要删除的Bot{NORMAL}");
   }
 
   return Plugin_Handled;
@@ -389,7 +389,12 @@ public Action Event_BotDamageDealtEvent(Event event, const char[] name, bool don
   if (IsPMBot(victim) && IsPlayer(attacker)) {
     int damage = event.GetInt("dmg_health");
     int postDamageHealth = event.GetInt("health");
-    PM_Message(attacker, "---> %d damage to BOT %N(%d health)", damage, victim, postDamageHealth);
+    if (postDamageHealth) {
+      PM_Message(attacker, "{DARK_RED}%d {NORMAL}伤害 ☛ BOT {YELLOW}%N{NORMAL}({GREEN}%d{NORMAL}HP)", damage, victim, postDamageHealth);
+    }
+    else {
+      PM_Message(attacker, "{DARK_RED}%d {NORMAL}伤害 ☛ BOT {YELLOW}%N{NORMAL}({GREEN}%d{NORMAL}HP ☠)", damage, victim, postDamageHealth);
+    }
   }
 
   return Plugin_Continue;
@@ -403,14 +408,14 @@ public Action Event_PlayerBlind(Event event, const char[] name, bool dontBroadca
   if (IsPMBot(client)) {
     int owner = GetBotsOwner(client);
     if (IsPlayer(owner)) {
-      PM_Message(owner, "---> %.1f second flash for BOT %N", GetFlashDuration(client), client);
+      PM_Message(owner, "{DARK_RED}%.1f {NORMAL}秒致盲 ☛ BOT {YELLOW}%N{NORMAL}", GetFlashDuration(client), client);
     }
 
     // Did anyone throw a flash recently? If so, they probably care about this bot being blinded.
     float now = GetGameTime();
     for (int i = 1; i <= MaxClients; i++) {
       if (owner != i && IsPlayer(i) && FloatAbs(now - g_LastFlashDetonateTime[i]) < 0.001) {
-        PM_Message(i, "---> %.1f second flash for BOT %N", GetFlashDuration(client), client);
+        PM_Message(i, "{DARK_RED}%.1f {NORMAL}秒致盲 ☛ BOT {YELLOW}%N{NORMAL}", GetFlashDuration(client), client);
       }
     }
   }
@@ -431,7 +436,7 @@ public Action Command_SaveBots(int client, int args) {
   bool hasCurrentBots = IsPMBot(GetClientBot(client));
   if (!hasCurrentBots) {
     // This is mostly just to prevent accidental deletion.
-    PM_Message(client, "You can't save bots when you have none added.");
+    PM_Message(client, "{LIGHT_RED}你还没有创建Bot{NORMAL}");
     return Plugin_Handled;
   }
 
@@ -469,7 +474,7 @@ public Action Command_SaveBots(int client, int args) {
   }
   delete botsKv;
 
-  PM_MessageToAll("Saved bot spawns.");
+  PM_MessageToAll("已保存Bot位置");
   return Plugin_Handled;
 }
 
@@ -500,7 +505,7 @@ public Action Command_LoadBots(int client, int args) {
   } while (botsKv.GotoNextKey());
 
   delete botsKv;
-  PM_MessageToAll("Loaded bot spawns.");
+  PM_MessageToAll("已加载Bot");
   return Plugin_Handled;
 }
 

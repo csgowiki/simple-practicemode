@@ -1,10 +1,10 @@
 public Action Command_NoFlash(int client, int args) {
   g_ClientNoFlash[client] = !g_ClientNoFlash[client];
   if (g_ClientNoFlash[client]) {
-    PM_Message(client, "Enabled noflash. Use .noflash again to disable.");
+    PM_Message(client, "闪光屏蔽 [{LIGHT_GREEN}已开启{NORMAL}]，再次输出 {GREEN}.noflash{NORMAL} 关闭");
     RequestFrame(KillFlashEffect, GetClientSerial(client));
   } else {
-    PM_Message(client, "Disabled noflash.");
+    PM_Message(client, "闪光屏蔽 [{LIGHT_RED}已禁用{NORMAL}]");
   }
   return Plugin_Handled;
 }
@@ -12,7 +12,7 @@ public Action Command_NoFlash(int client, int args) {
 public Action Command_Time(int client, int args) {
   if (!g_RunningTimeCommand[client]) {
     // Start command.
-    PM_Message(client, "When you start moving a timer will run until you stop moving.");
+    PM_Message(client, "当你开始移动时计时器开始计时，停止移动时计时器停止");
     g_RunningTimeCommand[client] = true;
     g_RunningLiveTimeCommand[client] = false;
     g_TimerType[client] = TimerType_Increasing_Movement;
@@ -27,7 +27,7 @@ public Action Command_Time(int client, int args) {
 public Action Command_Time2(int client, int args) {
   if (!g_RunningTimeCommand[client]) {
     // Start command.
-    PM_Message(client, "Type .timer2 to stop the timer again.");
+    PM_Message(client, "输入{GREEN} .timer2 {NORMAL}停止计时");
     g_RunningTimeCommand[client] = true;
     g_RunningLiveTimeCommand[client] = false;
     g_TimerType[client] = TimerType_Increasing_Manual;
@@ -47,7 +47,7 @@ public Action Command_CountDown(int client, int args) {
     timer_duration = StringToFloat(arg);
   }
 
-  PM_Message(client, "When you start moving a countdown will begin. Use .stop to cancel it.");
+  PM_Message(client, "当你开始移动时倒计时开始，输入{GREEN} .stop {NORMAL}取消倒计时");
   g_RunningTimeCommand[client] = true;
   g_RunningLiveTimeCommand[client] = false;
   g_TimerType[client] = TimerType_Countdown_Movement;
@@ -71,8 +71,8 @@ public void StopClientTimer(int client) {
   TimerType timer_type = g_TimerType[client];
   if (timer_type == TimerType_Increasing_Manual || timer_type == TimerType_Increasing_Movement) {
     float dt = GetEngineTime() - g_LastTimeCommand[client];
-    PM_Message(client, "Timer result: %.2f seconds", dt);
-    PrintCenterText(client, "Time: %.2f seconds", dt);
+    PM_Message(client, "计时结果: {LIGHT_GREEN} %.2f {NORMAL}秒", dt);
+    PrintCenterText(client, "计时: %.2f 秒", dt);
   }
 }
 
@@ -88,19 +88,30 @@ public Action Timer_DisplayClientTimer(Handle timer, int serial) {
       }
       if (time_left >= 0.0) {
         int seconds = RoundToCeil(time_left);
-        PrintCenterText(client, "Time: %d:%2d", seconds / 60, seconds % 60);
+        PrintCenterText(client, "倒计时: %d:%2d", seconds / 60, seconds % 60);
       } else {
         StopClientTimer(client);
+        PrintCenterText(client, "倒计时结束，禁止移动1秒");
+        g_PreFastForwardMoveTypes[client] = GetEntityMoveType(client);
+        SetEntityMoveType(client, MOVETYPE_NONE);
+        CreateTimer(1.0, Timer_UnFreezePlayer, GetClientSerial(client));
       }
       // TODO: can we clear the hint text here quicker? Perhaps an empty PrintHintText(client, "")
       // call works?
     } else {
       float dt = GetEngineTime() - g_LastTimeCommand[client];
-      PrintCenterText(client, "Time: %.1f seconds", dt);
+      PrintCenterText(client, "计时: %.1f 秒", dt);
     }
     return Plugin_Continue;
   }
   return Plugin_Stop;
+}
+
+public Action Timer_UnFreezePlayer(Handle timer, int serial) {
+  int client = GetClientFromSerial(serial);
+  if (IsPlayer(client)) {
+    SetEntityMoveType(client, g_PreFastForwardMoveTypes[client]);
+  }
 }
 
 public Action Command_Respawn(int client, int args) {
@@ -114,13 +125,13 @@ public Action Command_Respawn(int client, int args) {
   GetClientEyeAngles(client, g_SavedRespawnAngles[client]);
   PM_Message(
       client,
-      "Saved respawn point. When you die will you respawn here, use {GREEN}.stop {NORMAL}to cancel.");
+      "已保存重生点，当你死亡时将会在这里重生，输入 {GREEN}.stop {NORMAL}取消");
   return Plugin_Handled;
 }
 
 public Action Command_StopRespawn(int client, int args) {
   g_SavedRespawnActive[client] = false;
-  PM_Message(client, "Cancelled respawning at your saved position.");
+  PM_Message(client, "已取消保存的重生点");
   return Plugin_Handled;
 }
 
@@ -257,7 +268,7 @@ public Action Command_Delay(int client, int args) {
                    sizeof(fullString))) {
     float time = StringToFloat(timeString);
     if (time <= 0.0) {
-      PM_Message(client, "Usage: .repeat <interval in seconds> <any chat command>");
+      PM_Message(client, "用法: .repeat <间隔秒数> <任意聊天栏命令>");
       return Plugin_Handled;
     }
 
