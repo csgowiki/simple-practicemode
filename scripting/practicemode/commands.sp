@@ -165,7 +165,7 @@ public Action Command_FastForward(int client, int args) {
   if (g_FastfowardRequiresZeroVolumeCvar.IntValue != 0) {
     for (int i = 1; i <= MaxClients; i++) {
       if (IsPlayer(i) && g_ClientVolume[i] > 0.01) {
-        PM_Message(client, "All players must turn volume below 0.01 to allow the .ff command.");
+        PM_Message(client, "所有玩家的音量必须调整至\x020.01\x01以下才可以使用.ff指令快进时间");
         return Plugin_Handled;
       }
     }
@@ -180,7 +180,7 @@ public Action Command_FastForward(int client, int args) {
   }
 
   // Smokes last around 18 seconds.
-  PM_MessageToAll("Fastforwarding 20 seconds...");
+  PM_MessageToAll("\x09服务器时间快进20秒...");
   SetCvar("host_timescale", 10);
   CreateTimer(20.0, Timer_ResetTimescale);
 
@@ -200,7 +200,7 @@ public Action Timer_ResetTimescale(Handle timer) {
 
 public Action Command_Repeat(int client, int args) {
   if (args < 2) {
-    PM_Message(client, "Usage: .repeat <interval in seconds> <any chat command>");
+    PM_Message(client, "用法: .repeat <间隔秒数> <任意聊天栏命令>");
     return Plugin_Handled;
   }
 
@@ -219,8 +219,8 @@ public Action Command_Repeat(int client, int args) {
     FakeClientCommand(client, "say %s", g_RunningRepeatedCommandArg[client]);
     CreateTimer(time, Timer_RepeatCommand, GetClientSerial(client),
                 TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
-    PM_Message(client, "Running command every %.1f seconds.", time);
-    PM_Message(client, "Use {GREEN}.stop {NORMAL}when you are done.");
+    PM_Message(client, "正在重复执行命令，间隔 {YELLOW}%.1f{NORMAL} 秒", time);
+    PM_Message(client, "输入 {GREEN}.stop {NORMAL}停止");
   }
 
   return Plugin_Handled;
@@ -236,75 +236,19 @@ public Action Timer_RepeatCommand(Handle timer, int serial) {
   return Plugin_Continue;
 }
 
-public Action Command_RoundRepeat(int client, int args) {
-  if (args < 2) {
-    PM_Message(client,
-               "Usage: .roundrepeat <delay from round start in seconds> <any chat command>");
-    return Plugin_Handled;
-  }
-
-  char timeString[64];
-  char fullString[256];
-  char cmd[256];
-  if (GetCmdArgString(fullString, sizeof(fullString)) &&
-      SplitOnSpace(fullString, timeString, sizeof(timeString), cmd, sizeof(cmd))) {
-    float time = StringToFloat(timeString);
-    if (time < 0.0) {
-      PM_Message(client,
-                 "Usage: .roundrepeat <delay from round start in seconds> <any chat command>");
-      return Plugin_Handled;
-    }
-
-    g_RunningRepeatedCommand[client] = true;
-    PM_Message(client, "Running command every %.1f seconds after round start.", time);
-    PM_Message(client, "Use {GREEN}.stop {NORMAL}when you are done.");
-    g_RunningRoundRepeatedCommandDelay[client].Push(time);
-    g_RunningRoundRepeatedCommandArg[client].PushString(cmd);
-  }
-
-  return Plugin_Handled;
-}
-
-public void FreezeEnd_RoundRepeat(int client) {
-  if (g_RunningRepeatedCommand[client]) {
-    for (int i = 0; i < g_RunningRoundRepeatedCommandDelay[client].Length; i++) {
-      float delay = g_RunningRoundRepeatedCommandDelay[client].Get(i);
-      char cmd[256];
-      g_RunningRoundRepeatedCommandArg[client].GetString(i, cmd, sizeof(cmd));
-      DataPack p = new DataPack();
-      p.WriteCell(GetClientSerial(client));
-      p.WriteString(cmd);
-      CreateTimer(delay, Timer_RoundRepeatCommand, p);
-    }
-  }
-}
-
-public Action Timer_RoundRepeatCommand(Handle timer, DataPack p) {
-  p.Reset();
-  int client = GetClientFromSerial(p.ReadCell());
-  if (!IsPlayer(client) || !g_RunningRepeatedCommand[client]) {
-    return Plugin_Stop;
-  }
-
-  char cmd[256];
-  p.ReadString(cmd, sizeof(cmd));
-  FakeClientCommand(client, "say %s", cmd);
-  return Plugin_Continue;
-}
-
 public Action Command_StopRepeat(int client, int args) {
   if (g_RunningRepeatedCommand[client]) {
     g_RunningRepeatedCommand[client] = false;
     g_RunningRoundRepeatedCommandArg[client].Clear();
     g_RunningRoundRepeatedCommandDelay[client].Clear();
-    PM_Message(client, "Cancelled repeating command.");
+    PM_Message(client, "取消重复执行命令");
   }
   return Plugin_Handled;
 }
 
 public Action Command_Delay(int client, int args) {
   if (args < 2) {
-    PM_Message(client, "Usage: .delay <interval in seconds> <any chat command>");
+    PM_Message(client, "用法: .delay <间隔秒数> <任意聊天框命令>");
     return Plugin_Handled;
   }
 
@@ -429,13 +373,13 @@ static void ChangeSettingArg(int client, const char[] arg, bool enabled) {
   }
 
   if (indexMatches.Length == 0) {
-    PM_Message(client, "No settings matched \"%s\"", arg);
+    PM_Message(client, "没有找到设置 \"%s\"", arg);
   } else if (indexMatches.Length == 1) {
     if (!ChangeSetting(indexMatches.Get(0), enabled, true)) {
-      PM_Message(client, "That is already enabled.");
+      PM_Message(client, "该设置已启用");
     }
   } else {
-    PM_Message(client, "Multiple settings matched \"%s\"", arg);
+    PM_Message(client, "匹配到多项设置 \"%s\"", arg);
   }
 
   delete indexMatches;
@@ -457,7 +401,7 @@ public Action Command_Disable(int client, int args) {
 
 public Action Command_God(int client, int args) {
   if (!GetCvarIntSafe("sv_cheats")) {
-    PM_Message(client, ".god requires sv_cheats to be enabled.");
+    PM_Message(client, ".god 需要开启sv_cheats才可执行");
     return Plugin_Handled;
   }
 
@@ -467,7 +411,7 @@ public Action Command_God(int client, int args) {
 
 public Action Command_EndRound(int client, int args) {
   if (!GetCvarIntSafe("sv_cheats")) {
-    PM_Message(client, ".endround requires sv_cheats to be enabled.");
+    PM_Message(client, ".endround 需要开启sv_cheats才可执行");
     return Plugin_Handled;
   }
 
@@ -484,6 +428,6 @@ public Action Command_Break(int client, int args) {
     AcceptEntityInput(ent, "Break");
   }
 
-  PM_MessageToAll("Broke all breakable entities.");
+  PM_MessageToAll("\x04已破坏所有可破坏的实体");
   return Plugin_Handled;
 }

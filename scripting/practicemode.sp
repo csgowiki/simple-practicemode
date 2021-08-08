@@ -186,10 +186,7 @@ KeyValues g_NamedSpawnsKv = null;
 
 enum UserSetting {
   UserSetting_ShowAirtime,
-  UserSetting_LeaveNadeMenuOpen,
   UserSetting_NoGrenadeTrajectory,
-  UserSetting_SwitchToNadeOnSelect,
-  UserSetting_StopsRecordingInspectKey,
   UserSetting_NumSettings,
 };
 #define USERSETTING_DISPLAY_LENGTH 128
@@ -469,10 +466,6 @@ public void OnPluginStart() {
     RegConsoleCmd("sm_stopall", Command_StopAll);
     PM_AddChatAlias(".stop", "sm_stopall");
 
-    RegConsoleCmd("sm_roundrepeat", Command_RoundRepeat);
-    PM_AddChatAlias(".roundrepeat", "sm_roundrepeat");
-    PM_AddChatAlias(".rrepeat", "sm_roundrepeat");
-
     RegConsoleCmd("sm_dryrun", Command_DryRun);
     PM_AddChatAlias(".dry", "sm_dryrun");
     PM_AddChatAlias(".dryrun", "sm_dryrun");
@@ -499,7 +492,7 @@ public void OnPluginStart() {
   g_DryRunFreezeTimeCvar = CreateConVar("sm_practicemode_dry_run_freeze_time", "6",
                                         "Freezetime after running the .dryrun command.");
   g_MaxHistorySizeCvar = CreateConVar(
-      "sm_practicemode_max_grenade_history_size", "50000",
+      "sm_practicemode_max_grenade_history_size", "5",
       "Maximum number of previous grenade throws saved in temporary history per-client. The temporary history is reset every map change. Set to 0 to disable.");
   g_SharedAllNadesCvar = CreateConVar(
       "sm_practicemode_share_all_nades", "0",
@@ -563,15 +556,9 @@ public void OnPluginStart() {
 
   // Create client cookies.
   RegisterUserSetting(UserSetting_ShowAirtime, "practicemode_grenade_airtime", true,
-                      "Show grenade airtime");
-  RegisterUserSetting(UserSetting_LeaveNadeMenuOpen, "practicemode_leave_menu_open", false,
-                      "Leave .nades menu open after selection");
+                      "显示烟雾弹飞行时间");
   RegisterUserSetting(UserSetting_NoGrenadeTrajectory, "practicemode_no_traject", false,
-                      "Disable grenade trajectories");
-  RegisterUserSetting(UserSetting_SwitchToNadeOnSelect, "practicemode_use_ade", true,
-                      "Switch to nade on .nades select");
-  RegisterUserSetting(UserSetting_StopsRecordingInspectKey, "practicemode_stop_inspect", true,
-                      "Stop bot recording on inspect command");
+                      "隐藏投掷物轨迹");
 
   // Remove cheats so sv_cheats isn't required for this:
   RemoveCvarFlag(g_GrenadeTrajectoryCvar, FCVAR_CHEAT);
@@ -1083,7 +1070,7 @@ stock bool ChangeSetting(int index, bool enabled, bool print = true, bool force_
     char enabledString[32];
     GetEnabledString(enabledString, sizeof(enabledString), enabled);
     if (!StrEqual(name, "")) {
-      PM_MessageToAll("%s is now %s.", name, enabledString);
+      PM_MessageToAll("设置 [\x09%s\x01] %s.", name, enabledString);
     }
   }
 
@@ -1243,7 +1230,7 @@ public void GrenadeDetonateTimerHelper(Event event, const char[] grenadeName) {
         float dt = GetEngineTime() - view_as<float>(g_ClientGrenadeThrowTimes[client].Get(i, 1));
         g_ClientGrenadeThrowTimes[client].Erase(i);
         if (GetSetting(client, UserSetting_ShowAirtime)) {
-          PM_Message(client, "Airtime of %s: %.1f seconds", grenadeName, dt);
+          PM_Message(client, "烟雾弹飞行时间 \x06 %s: %.1f\x01 秒", grenadeName, dt);
         }
         break;
       }
@@ -1290,15 +1277,13 @@ public Action Event_FreezeEnd(Event event, const char[] name, bool dontBroadcast
 
     if (g_ClientNoFlash[i]) {
       g_ClientNoFlash[i] = false;
-      PM_Message(i, "Disabled noflash on round start.");
+      PM_Message(i, "在回合开始时禁用闪光屏蔽");
     }
 
     if (GetEntityMoveType(i) == MOVETYPE_NOCLIP) {
       SetEntityMoveType(i, MOVETYPE_WALK);
-      PM_Message(i, "Disabled noclip on round start.");
+      PM_Message(i, "在回合开始时禁用飞行");
     }
-
-    FreezeEnd_RoundRepeat(i);
   }
 
   return Plugin_Handled;
