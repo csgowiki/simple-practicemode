@@ -1,4 +1,4 @@
-#define MESSAGE_PREFIX "[\x05练习模式\x01]"
+char MESSAGE_PREFIX[64] = "[{LIGHT_GREEN}练习模式{NORMAL}]";
 
 /**
  * Natives.
@@ -68,13 +68,11 @@ public int Native_Message(Handle plugin, int numParams) {
   SetGlobalTransTarget(client);
   FormatNativeString(0, 2, 3, sizeof(buffer), bytesWritten, buffer);
 
-  char prefix[64] = MESSAGE_PREFIX;
-
   char finalMsg[1024];
-  if (StrEqual(prefix, ""))
+  if (StrEqual(MESSAGE_PREFIX, ""))
     Format(finalMsg, sizeof(finalMsg), " %s", buffer);
   else
-    Format(finalMsg, sizeof(finalMsg), "%s %s", prefix, buffer);
+    Format(finalMsg, sizeof(finalMsg), "%s %s", MESSAGE_PREFIX, buffer);
 
   if (client == 0) {
     Colorize(finalMsg, sizeof(finalMsg), false);
@@ -86,7 +84,6 @@ public int Native_Message(Handle plugin, int numParams) {
 }
 
 public int Native_MessageToAll(Handle plugin, int numParams) {
-  char prefix[64] = MESSAGE_PREFIX;
   char buffer[1024];
   int bytesWritten = 0;
 
@@ -98,10 +95,10 @@ public int Native_MessageToAll(Handle plugin, int numParams) {
     FormatNativeString(0, 1, 2, sizeof(buffer), bytesWritten, buffer);
 
     char finalMsg[1024];
-    if (StrEqual(prefix, ""))
+    if (StrEqual(MESSAGE_PREFIX, ""))
       Format(finalMsg, sizeof(finalMsg), " %s", buffer);
     else
-      Format(finalMsg, sizeof(finalMsg), "%s %s", prefix, buffer);
+      Format(finalMsg, sizeof(finalMsg), "%s %s", MESSAGE_PREFIX, buffer);
 
     if (i != 0) {
       Colorize(finalMsg, sizeof(finalMsg));

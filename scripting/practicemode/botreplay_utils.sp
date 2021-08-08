@@ -51,6 +51,7 @@ public int GetLiveBot(const char[] name) {
 
   SetClientName(bot, name);
   CS_SwitchTeam(bot, CS_TEAM_T);
+
   KillBot(bot);
   return bot;
 }
@@ -155,6 +156,7 @@ public void Timer_DelayKillBot(int serial) {
   if (IsReplayBot(client)) {
     float zero[3];
     TeleportEntity(client, zero, zero, zero);
+
     KillBot(client);
 
     int role = GetReplayRoleNumber(client);

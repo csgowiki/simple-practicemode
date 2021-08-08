@@ -63,7 +63,6 @@ ConVar g_PatchGrenadeTrajectoryCvar;
 ConVar g_GrenadeTrajectoryClientColorCvar;
 ConVar g_RandomGrenadeTrajectoryCvar;
 
-ConVar g_AllowNoclipCvar;
 ConVar g_GrenadeTrajectoryCvar;
 ConVar g_GrenadeThicknessCvar;
 ConVar g_GrenadeTimeCvar;
@@ -75,10 +74,7 @@ ConVar g_TestFlashTeleportDelayCvar;
 ConVar g_VersionCvar;
 
 // Saved grenade locations data
-#define GRENADE_DESCRIPTION_LENGTH 256
-#define GRENADE_NAME_LENGTH 64
 #define GRENADE_ID_LENGTH 16
-#define GRENADE_CATEGORY_LENGTH 128
 #define AUTH_LENGTH 64
 #define AUTH_METHOD AuthId_Steam2
 
@@ -108,8 +104,6 @@ bool g_SavedRespawnActive[MAXPLAYERS + 1];
 float g_SavedRespawnOrigin[MAXPLAYERS + 1][3];
 float g_SavedRespawnAngles[MAXPLAYERS + 1][3];
 
-ArrayList g_KnownNadeCategories = null;
-
 ArrayList g_ClientBots[MAXPLAYERS + 1];  // Bots owned by each client.
 bool g_IsPMBot[MAXPLAYERS + 1];
 float g_BotSpawnOrigin[MAXPLAYERS + 1][3];
@@ -121,6 +115,8 @@ float g_BotDeathTime[MAXPLAYERS + 1];
 
 bool g_BotInit = false;
 bool g_InBotReplayMode = false;
+bool g_InDryRun = false;
+
 KeyValues g_ReplaysKv;
 
 #define PLAYER_HEIGHT 72.0
@@ -137,8 +133,6 @@ enum ClientColor {
   ClientColor_Blue = 3,
   ClientColor_Orange = 4,
 };
-
-int g_LastNoclipCommand[MAXPLAYERS + 1];
 
 // Timer data. Supports 3 modes:
 enum TimerType {
@@ -173,8 +167,8 @@ ArrayList g_TSpawns = null;
 KeyValues g_NamedSpawnsKv = null;
 
 enum UserSetting {
-  UserSetting_ShowAirtime,
-  UserSetting_NoGrenadeTrajectory
+  UserSetting_ShowAirtime = 1,
+  UserSetting_NoGrenadeTrajectory = 0
 };
 
 #define USERSETTING_NUMSETTINGS 2
@@ -197,11 +191,11 @@ Handle g_OnPracticeModeSettingsRead = INVALID_HANDLE;
 #include "practicemode/backups.sp"
 #include "practicemode/bots.sp"
 #include "practicemode/bots_menu.sp"
+#include "practicemode/natives.sp"
 #include "practicemode/commands.sp"
 #include "practicemode/debug.sp"
 #include "practicemode/grenade_commands.sp"
 #include "practicemode/grenade_utils.sp"
-#include "practicemode/natives.sp"
 #include "practicemode/settings_menu.sp"
 #include "practicemode/spawns.sp"
 
@@ -217,9 +211,6 @@ public Plugin myinfo = {
 
 public void OnPluginStart() {
   AddCommandListener(Command_TeamJoin, "jointeam");
-  AddCommandListener(Command_Noclip, "noclip");
-  AddCommandListener(Command_SetPos, "setpos");
-
   // Forwards
   g_OnPracticeModeSettingChanged = CreateGlobalForward(
       "PM_OnPracticeModeEnabled", ET_Ignore, Param_Cell, Param_String, Param_String, Param_Cell);
@@ -474,7 +465,7 @@ public void OnPluginStart() {
       "sm_practicemode_max_grenade_history_size", "5",
       "Maximum number of previous grenade throws saved in temporary history per-client. The temporary history is reset every map change. Set to 0 to disable.");
   g_MaxPlacedBotsCvar =
-      CreateConVar("sm_practicemode_max_placed_bots", "25",
+      CreateConVar("sm_practicemode_max_placed_bots", "10",
                    "Maximum number of static bots a single client may have placed at once.");
 
   g_FlashEffectiveThresholdCvar =
@@ -497,10 +488,6 @@ public void OnPluginStart() {
   // New cvars we don't want saved in the autoexec'd file
   g_InfiniteMoneyCvar = CreateConVar("sm_infinite_money", "0",
                                      "Whether clients recieve infinite money", FCVAR_DONTRECORD);
-  g_AllowNoclipCvar =
-      CreateConVar("sm_allow_noclip", "0",
-                   "Whether players may use .noclip in chat to toggle noclip", FCVAR_DONTRECORD);
-
   g_PatchGrenadeTrajectoryCvar =
       CreateConVar("sm_patch_grenade_trajectory_cvar", "1",
                    "Whether the plugin patches sv_grenade_trajectory with its own grenade trails");
@@ -528,7 +515,6 @@ public void OnPluginStart() {
 
   g_CTSpawns = new ArrayList();
   g_TSpawns = new ArrayList();
-  g_KnownNadeCategories = new ArrayList(GRENADE_CATEGORY_LENGTH);
 
   // Create client cookies.
   RegisterUserSetting(UserSetting_ShowAirtime, "practicemode_grenade_airtime", true,
@@ -611,7 +597,6 @@ public void OnClientConnected(int client) {
 public void OnMapStart() {
   ReadPracticeSettings();
   g_BeamSprite = PrecacheModel("materials/sprites/laserbeam.vmt");
-  g_KnownNadeCategories.Clear();
 
   EnforceDirectoryExists("data/practicemode");
   EnforceDirectoryExists("data/practicemode/bots");
@@ -623,38 +608,14 @@ public void OnMapStart() {
   EnforceDirectoryExists("data/practicemode/replays");
   EnforceDirectoryExists("data/practicemode/replays/backups");
 
-  // This supports backwards compatability for grenades saved in the old location
-  // data/practicemode_grenades. The data is transferred to the new
-  // location if they are read from the legacy location.
-  char legacyDir[PLATFORM_MAX_PATH];
-  BuildPath(Path_SM, legacyDir, sizeof(legacyDir), "data/practicemode_grenades");
-
   char map[PLATFORM_MAX_PATH];
   GetCleanMapName(map, sizeof(map));
-
-  char legacyFile[PLATFORM_MAX_PATH];
-  Format(legacyFile, sizeof(legacyFile), "%s/%s.cfg", legacyDir, map);
 
   Spawns_MapStart();
   BotReplay_MapStart();
 }
 
 public void OnConfigsExecuted() {
-  // Disable legacy plugin if found.
-  char legacyPluginFile[PLATFORM_MAX_PATH];
-  BuildPath(Path_SM, legacyPluginFile, sizeof(legacyPluginFile),
-            "plugins/pugsetup_practicemode.smx");
-  if (FileExists(legacyPluginFile)) {
-    char disabledLegacyPluginName[PLATFORM_MAX_PATH];
-    BuildPath(Path_SM, disabledLegacyPluginName, sizeof(disabledLegacyPluginName),
-              "plugins/disabled/pugsetup_practicemode.smx");
-    ServerCommand("sm plugins unload pugsetup_practicemode");
-    if (FileExists(disabledLegacyPluginName))
-      DeleteFile(disabledLegacyPluginName);
-    RenameFile(disabledLegacyPluginName, legacyPluginFile);
-    LogMessage("%s was unloaded and moved to %s", legacyPluginFile, disabledLegacyPluginName);
-  }
-
   LaunchPracticeMode();
 }
 
@@ -663,7 +624,6 @@ public void OnClientDisconnect(int client) {
 
   g_IsPMBot[client] = false;
 
-  // If the server empties out, exit practice mode.
   int playerCount = 0;
   for (int i = 0; i <= MaxClients; i++) {
     if (IsPlayer(i)) {
@@ -820,49 +780,7 @@ public Action Command_TeamJoin(int client, const char[] command, int argc) {
 
 }
 
-public Action Command_Noclip(int client, const char[] command, int argc) {
-  PerformNoclipAction(client);
-  return Plugin_Handled;
-}
-
-public Action Command_SetPos(int client, const char[] command, int argc) {
-  SetEntityMoveType(client, MOVETYPE_WALK);
-  return Plugin_Continue;
-}
-
 public Action OnClientSayCommand(int client, const char[] command, const char[] text) {
-  if (g_AllowNoclipCvar.IntValue != 0 && StrEqual(text, ".noclip") && IsPlayer(client)) {
-    PerformNoclipAction(client);
-  }
-}
-
-public void PerformNoclipAction(int client) {
-  // The move type is also set on the next frame. This is a dirty trick to deal
-  // with clients that have a double-bind of "noclip; say .noclip" to work on both
-  // ESEA-practice and local sv_cheats servers. Since this plugin can have both enabled
-  // (sv_cheats and allow noclip), this double bind would cause the noclip type to be toggled twice.
-  // Therefore the fix is to only perform 1 noclip action per-frame per-client at most, implemented
-  // by saving the frame count of each use in g_LastNoclipCommand.
-  if (g_LastNoclipCommand[client] == GetGameTickCount() ||
-      (g_AllowNoclipCvar.IntValue == 0 && GetCvarIntSafe("sv_cheats") == 0)) {
-    return;
-  }
-
-  // Stop recording if we are.
-  if (g_BotMimicLoaded && g_InBotReplayMode) {
-    FinishRecording(client, false);
-  }
-
-  g_LastNoclipCommand[client] = GetGameTickCount();
-  MoveType t = GetEntityMoveType(client);
-  MoveType next = (t == MOVETYPE_WALK) ? MOVETYPE_NOCLIP : MOVETYPE_WALK;
-  SetEntityMoveType(client, next);
-
-  if (next == MOVETYPE_WALK) {
-    SetEntProp(client, Prop_Data, "m_CollisionGroup", 5);
-  } else {
-    SetEntProp(client, Prop_Data, "m_CollisionGroup", 0);
-  }
 }
 
 public void ReadPracticeSettings() {
@@ -963,7 +881,8 @@ public void LaunchPracticeMode() {
   for (int i = 0; i < g_BinaryOptionNames.Length; i++) {
     ChangeSetting(i, PM_IsSettingEnabled(i), false, true);
   }
-
+  g_InDryRun = false;
+  strcopy(MESSAGE_PREFIX, sizeof(MESSAGE_PREFIX), "[{LIGHT_GREEN}练习模式{NORMAL}");
   PM_MessageToAll("练习模式初始化完成~");
 }
 
@@ -1007,7 +926,7 @@ stock bool ChangeSetting(int index, bool enabled, bool print = true, bool force_
     char enabledString[32];
     GetEnabledString(enabledString, sizeof(enabledString), enabled);
     if (!StrEqual(name, "")) {
-      PM_MessageToAll("设置 [\x09%s\x01] %s.", name, enabledString);
+      PM_MessageToAll("设置 [{GRAY}%s{NORMAL}] %s.", name, enabledString);
     }
   }
 
@@ -1082,11 +1001,9 @@ public int DelayedOnEntitySpawned(int entity) {
           if (!IsClientConnected(i) || !IsClientInGame(i)) {
             continue;
           }
-
           if (GetSetting(client, UserSetting_NoGrenadeTrajectory)) {
             continue;
           }
-
           // Note: the technique using temporary entities is taken from InternetBully's NadeTails
           // plugin which you can find at https://forums.alliedmods.net/showthread.php?t=240668
           float time = (GetClientTeam(i) == CS_TEAM_SPECTATOR) ? g_GrenadeSpecTimeCvar.FloatValue
@@ -1152,7 +1069,7 @@ public Action Event_WeaponFired(Event event, const char[] name, bool dontBroadca
 }
 
 public Action Event_SmokeDetonate(Event event, const char[] name, bool dontBroadcast) {
-  GrenadeDetonateTimerHelper(event, "smoke grenade");
+  GrenadeDetonateTimerHelper(event, "烟雾弹");
 }
 
 public void GrenadeDetonateTimerHelper(Event event, const char[] grenadeName) {
@@ -1167,7 +1084,7 @@ public void GrenadeDetonateTimerHelper(Event event, const char[] grenadeName) {
         float dt = GetEngineTime() - view_as<float>(g_ClientGrenadeThrowTimes[client].Get(i, 1));
         g_ClientGrenadeThrowTimes[client].Erase(i);
         if (GetSetting(client, UserSetting_ShowAirtime)) {
-          PM_Message(client, "烟雾弹飞行时间 \x06 %s: %.1f\x01 秒", grenadeName, dt);
+          PM_Message(client, "%s飞行时间:\x05 %.1f\x01 秒", grenadeName, dt);
         }
         break;
       }
@@ -1191,10 +1108,10 @@ public void GetTestingFlashInfo(int serial) {
   int client = GetClientFromSerial(serial);
   if (IsPlayer(client) && g_TestingFlash[client]) {
     float flashDuration = GetFlashDuration(client);
-    PM_Message(client, "Flash duration: %.1f seconds", flashDuration);
+    PM_Message(client, "闪光持续时间: \x05%.1f \x01秒", flashDuration);
 
     if (flashDuration < g_FlashEffectiveThresholdCvar.FloatValue) {
-      PM_Message(client, "Ineffective flash");
+      PM_Message(client, "{DARK_RED}无效的闪光{NORMAL}");
       CreateTimer(1.0, Timer_FakeGrenadeBack, GetClientSerial(client));
     } else {
       float delay = flashDuration - 1.0;

@@ -330,27 +330,40 @@ public void ChangeSettingById(const char[] id, bool setting) {
 }
 
 public Action Command_DryRun(int client, int args) {
-  SetCvar("mp_freezetime", g_DryRunFreezeTimeCvar.IntValue);
-  ChangeSettingById("allradar", false);
-  ChangeSettingById("blockroundendings", false);
-  ChangeSettingById("grenadetrajectory", false);
-  ChangeSettingById("infiniteammo", false);
-  ChangeSettingById("noclip", false);
-  ChangeSettingById("respawning", false);
-  ChangeSettingById("showimpacts", false);
+  if (g_InDryRun) {
+    strcopy(MESSAGE_PREFIX, sizeof(MESSAGE_PREFIX), "[{LIGHT_GREEN}练习模式{NORMAL}]");
+    DryRunSetting(client, true, 0);
+  }
+  else {
+    strcopy(MESSAGE_PREFIX, sizeof(MESSAGE_PREFIX), "[{LIGHT_RED}实战模式{NORMAL}]");
+    DryRunSetting(client, false, g_DryRunFreezeTimeCvar.IntValue);
+  }
+  g_InDryRun = !g_InDryRun;
+  PM_MessageToAll("输入{DARK_RED}.dry{NORMAL}或{DARK_RED}.dryrun{NORMAL}切换[{LIGHT_GREEN}练习模式{NORMAL}]与[{LIGHT_RED}实战模式{NORMAL}]");
+  return Plugin_Handled;
+}
+
+void DryRunSetting(int client, bool status, int mp_freezetime) {
+  SetCvar("mp_freezetime", mp_freezetime);
+  ChangeSettingById("allradar", status);
+  ChangeSettingById("blockroundendings", status);
+  ChangeSettingById("grenadetrajectory", status);
+  ChangeSettingById("infiniteammo", status);
+  ChangeSettingById("noclip", status);
+  ChangeSettingById("respawning", status);
+  ChangeSettingById("showimpacts", status);
 
   for (int i = 1; i <= MaxClients; i++) {
-    g_TestingFlash[i] = false;
-    g_RunningRepeatedCommand[i] = false;
+    g_TestingFlash[i] = status;
+    g_RunningRepeatedCommand[i] = status;
     g_SavedRespawnActive[i] = false;
-    g_ClientNoFlash[client] = false;
-    if (IsPlayer(i)) {
+    g_ClientNoFlash[client] = status;
+    if (IsPlayer(i) && !status) {
       SetEntityMoveType(i, MOVETYPE_WALK);
     }
   }
 
   ServerCommand("mp_restartgame 1");
-  return Plugin_Handled;
 }
 
 static void ChangeSettingArg(int client, const char[] arg, bool enabled) {
