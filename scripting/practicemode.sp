@@ -11,8 +11,6 @@
 #include <botmimic>
 #include <csutils>
 
-#include <updater>
-
 #include <practicemode>
 #include <restorecvars>
 #include "practicemode/util.sp"
@@ -176,13 +174,14 @@ KeyValues g_NamedSpawnsKv = null;
 
 enum UserSetting {
   UserSetting_ShowAirtime,
-  UserSetting_NoGrenadeTrajectory,
-  UserSetting_NumSettings,
+  UserSetting_NoGrenadeTrajectory
 };
+
+#define USERSETTING_NUMSETTINGS 2
 #define USERSETTING_DISPLAY_LENGTH 128
-Handle g_UserSettingCookies[UserSetting_NumSettings];
-bool g_UserSettingDefaults[UserSetting_NumSettings];
-char g_UserSettingDisplayName[UserSetting_NumSettings][USERSETTING_DISPLAY_LENGTH];
+Handle g_UserSettingCookies[USERSETTING_NUMSETTINGS];
+bool g_UserSettingDefaults[USERSETTING_NUMSETTINGS];
+char g_UserSettingDisplayName[USERSETTING_NUMSETTINGS][USERSETTING_DISPLAY_LENGTH];
 
 // Forwards
 Handle g_OnPracticeModeSettingChanged = INVALID_HANDLE;
@@ -562,9 +561,6 @@ public void OnPluginEnd() {
 public void OnLibraryAdded(const char[] name) {
   g_CSUtilsLoaded = LibraryExists("csutils");
   g_BotMimicLoaded = LibraryExists("botmimic");
-  if (LibraryExists("updater")) {
-    Updater_AddPlugin(UPDATE_URL);
-  }
 }
 
 public void OnLibraryRemoved(const char[] name) {

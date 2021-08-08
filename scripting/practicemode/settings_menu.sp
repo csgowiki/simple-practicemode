@@ -30,7 +30,7 @@ public void GiveSettingsMenu(int client) {
   Menu menu = new Menu(SettingsMenuHandler);
   menu.SetTitle("跑图-用户设置:");
 
-  for (int i = 0; i < view_as<int>(UserSetting_NumSettings); i++) {
+  for (int i = 0; i < view_as<int>(USERSETTING_NUMSETTINGS); i++) {
     char buffer[128];
     Format(buffer, sizeof(buffer), "%s: %s", g_UserSettingDisplayName[i],
            GetSetting(client, view_as<UserSetting>(i)) ? "已启用" : "已禁用");
