@@ -151,43 +151,6 @@ public bool TeleportToSavedGrenadePosition(int client, const char[] id) {
   return success;
 }
 
-stock bool ThrowGrenade(int client, const char[] id, float delay = 0.0) {
-  if (!g_CSUtilsLoaded) {
-    return false;
-  }
-
-  char typeString[32];
-  float grenadeOrigin[3];
-  float grenadeVelocity[3];
-  char auth[AUTH_LENGTH];
-  bool success = false;
-
-  if (!FindId(id, auth, sizeof(auth))) {
-    return false;
-  }
-
-  if (g_GrenadeLocationsKv.JumpToKey(auth)) {
-    if (g_GrenadeLocationsKv.JumpToKey(id)) {
-      g_GrenadeLocationsKv.GetVector("grenadeOrigin", grenadeOrigin);
-      g_GrenadeLocationsKv.GetVector("grenadeVelocity", grenadeVelocity);
-      g_GrenadeLocationsKv.GetString("grenadeType", typeString, sizeof(typeString));
-      GrenadeType type = GrenadeTypeFromString(typeString);
-      if (IsGrenade(type)) {
-        success = true;
-        if (delay > 0.1) {
-          CSU_DelayThrowGrenade(delay, 0, type, grenadeOrigin, grenadeVelocity);
-        } else {
-          CSU_ThrowGrenade(client, type, grenadeOrigin, grenadeVelocity);
-        }
-      }
-      g_GrenadeLocationsKv.GoBack();
-    }
-    g_GrenadeLocationsKv.GoBack();
-  }
-
-  return success;
-}
-
 stock int SaveGrenadeToKv(int client, const float origin[3], const float angles[3],
                           const float grenadeOrigin[3], const float grenadeVelocity[3],
                           GrenadeType type, const char[] name, const char[] description = "",

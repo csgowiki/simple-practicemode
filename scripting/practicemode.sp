@@ -8,15 +8,13 @@
 #include <sourcemod>
 
 #undef REQUIRE_PLUGIN
-#include "include/botmimic.inc"
-#include "include/csutils.inc"
+#include <botmimic>
+#include <csutils>
 
-// #include <get5>
-#include <pugsetup>
-#include "include/updater.inc"
+#include <updater>
 
-#include "include/practicemode.inc"
-#include "include/restorecvars.inc"
+#include <practicemode>
+#include <restorecvars>
 #include "practicemode/util.sp"
 
 #pragma semicolon 1
@@ -48,10 +46,8 @@ ArrayList g_ChatAliases;
 ArrayList g_ChatAliasesCommands;
 
 // Plugin cvars
-ConVar g_AlphabetizeNadeMenusCvar;
 ConVar g_BotRespawnTimeCvar;
 ConVar g_DryRunFreezeTimeCvar;
-ConVar g_MaxGrenadesSavedCvar;
 ConVar g_MaxHistorySizeCvar;
 ConVar g_SharedAllNadesCvar;
 ConVar g_FastfowardRequiresZeroVolumeCvar;
@@ -183,18 +179,6 @@ enum GrenadeMenuType {
   GrenadeMenuType_MultiCategory = 6,
 };
 
-// All the data we need to call GiveGrenadeMenu for a client to reopen the .nades menu
-// where they left off. The first set are for the 'top' menus where you select a player or category.
-// The second set are for the lower level menus of selecting a single grenade from a
-// player/category menu.
-GrenadeMenuType g_ClientLastTopMenuType[MAXPLAYERS + 1];
-int g_ClientLastTopMenuPos[MAXPLAYERS + 1];
-char g_ClientLastTopMenuData[MAXPLAYERS + 1][AUTH_LENGTH];
-
-GrenadeMenuType g_ClientLastMenuType[MAXPLAYERS + 1];
-int g_ClientLastMenuPos[MAXPLAYERS + 1];
-char g_ClientLastMenuData[MAXPLAYERS + 1][AUTH_LENGTH];
-
 // Data storing spawn priorities.
 ArrayList g_CTSpawns = null;
 ArrayList g_TSpawns = null;
@@ -214,7 +198,6 @@ bool g_UserSettingDefaults[UserSetting_NumSettings];
 char g_UserSettingDisplayName[UserSetting_NumSettings][USERSETTING_DISPLAY_LENGTH];
 
 // Forwards
-Handle g_OnGrenadeSaved = INVALID_HANDLE;
 Handle g_OnPracticeModeSettingChanged = INVALID_HANDLE;
 Handle g_OnPracticeModeSettingsRead = INVALID_HANDLE;
 
@@ -234,7 +217,6 @@ Handle g_OnPracticeModeSettingsRead = INVALID_HANDLE;
 #include "practicemode/debug.sp"
 #include "practicemode/grenade_commands.sp"
 #include "practicemode/grenade_filters.sp"
-#include "practicemode/grenade_menus.sp"
 #include "practicemode/grenade_utils.sp"
 #include "practicemode/natives.sp"
 #include "practicemode/settings_menu.sp"
@@ -256,8 +238,6 @@ public void OnPluginStart() {
   AddCommandListener(Command_SetPos, "setpos");
 
   // Forwards
-  g_OnGrenadeSaved = CreateGlobalForward("PM_OnPracticeModeEnabled", ET_Event, Param_Cell,
-                                         Param_Array, Param_Array, Param_String);
   g_OnPracticeModeSettingChanged = CreateGlobalForward(
       "PM_OnPracticeModeEnabled", ET_Ignore, Param_Cell, Param_String, Param_String, Param_Cell);
   g_OnPracticeModeSettingsRead = CreateGlobalForward("PM_OnPracticeModeEnabled", ET_Ignore);
@@ -315,15 +295,8 @@ public void OnPluginStart() {
     RegConsoleCmd("sm_lastgrenade", Command_LastGrenade);
     PM_AddChatAlias(".last", "sm_lastgrenade");
 
-    RegConsoleCmd("sm_nextgrenade", Command_NextGrenade);
-    PM_AddChatAlias(".next", "sm_nextgrenade");
-    PM_AddChatAlias(".nextid", "sm_nextgrenade");
-
     RegConsoleCmd("sm_clearnades", Command_ClearNades);
     PM_AddChatAlias(".clearnades", "sm_clearnades");
-
-    RegConsoleCmd("sm_savepos", Command_SavePos);
-    PM_AddChatAlias(".savepos", "sm_savepos");
   }
 
   // Spawn commands
@@ -356,7 +329,6 @@ public void OnPluginStart() {
   {
     RegConsoleCmd("sm_bot", Command_Bot);
     PM_AddChatAlias(".bot", "sm_bot");
-    PM_AddChatAlias(".addbot", "sm_bot");
 
     RegConsoleCmd("sm_tbot", Command_TBot);
     PM_AddChatAlias(".tbot", "sm_tbot");
@@ -434,77 +406,10 @@ public void OnPluginStart() {
 
   // Saved grenade location commands
   {
-    RegConsoleCmd("sm_gotogrenade", Command_GotoNade);
-    PM_AddChatAlias(".goto", "sm_gotogrenade");
-
-    RegConsoleCmd("sm_grenades", Command_Grenades);
-    PM_AddChatAlias(".nades", "sm_grenades");
-    PM_AddChatAlias(".grenades", "sm_grenades");
-
-    RegConsoleCmd("sm_find", Command_Find);
-    PM_AddChatAlias(".find", "sm_find");
-
-    RegConsoleCmd("sm_renamegrenade", Command_RenameGrenade);
-    PM_AddChatAlias(".rename", "sm_renamegrenade");
-
-    RegConsoleCmd("sm_savegrenade", Command_SaveGrenade);
-    PM_AddChatAlias(".addnade", "sm_savegrenade");
-    PM_AddChatAlias(".savenade", "sm_savegrenade");
-    PM_AddChatAlias(".save", "sm_savegrenade");
-
-    RegConsoleCmd("sm_movegrenade", Command_MoveGrenade);
-    PM_AddChatAlias(".resave", "sm_movegrenade");
-    PM_AddChatAlias(".move", "sm_movegrenade");
-
-    RegConsoleCmd("sm_savethrow", Command_SaveThrow);
-    PM_AddChatAlias(".savethrow", "sm_savethrow");
-    PM_AddChatAlias(".updatethrow", "sm_savethrow");
-
-    RegConsoleCmd("sm_updategrenade", Command_UpdateGrenade);
-    PM_AddChatAlias(".update", "sm_updategrenade");
-
-    RegConsoleCmd("sm_savedelay", Command_SetDelay);
-    PM_AddChatAlias(".setdelay", "sm_savedelay");
-    PM_AddChatAlias(".savedelay", "sm_savedelay");
-
-    RegConsoleCmd("sm_clearthrow", Command_ClearThrow);
-    PM_AddChatAlias(".clearthrow", "sm_clearthrow");
-
-    RegConsoleCmd("sm_adddescription", Command_GrenadeDescription);
-    PM_AddChatAlias(".desc", "sm_adddescription");
-
-    RegConsoleCmd("sm_deletegrenade", Command_DeleteGrenade);
-    PM_AddChatAlias(".delete", "sm_deletegrenade");
-
-    RegConsoleCmd("sm_categories", Command_Categories);
-
-    RegConsoleCmd("sm_addcategory", Command_AddCategory);
-    PM_AddChatAlias(".category", "sm_addcategory");
-    PM_AddChatAlias(".cat", "sm_addcategory");
-    PM_AddChatAlias(".cats", "sm_categories");
-    PM_AddChatAlias(".addcategory", "sm_addcategory");
-    PM_AddChatAlias(".addcat", "sm_addcategory");
-
-    RegConsoleCmd("sm_addcategories", Command_AddCategories);
-    PM_AddChatAlias(".addcats", "sm_addcategories");
-
-    RegConsoleCmd("sm_removecategory", Command_RemoveCategory);
-    PM_AddChatAlias(".removecategory", "sm_removecategory");
-    PM_AddChatAlias(".removecat", "sm_removecategory");
-
-    RegConsoleCmd("sm_deletecategory", Command_DeleteCategory);
-    PM_AddChatAlias(".deletecat", "sm_deletecategory");
-
-    RegConsoleCmd("sm_clearcategories", Command_ClearGrenadeCategories);
-    PM_AddChatAlias(".clearcats", "sm_clearcategories");
-
-    RegConsoleCmd("sm_copygrenade", Command_CopyGrenade);
-    PM_AddChatAlias(".copy", "sm_copygrenade");
-
     RegConsoleCmd("sm_respawn", Command_Respawn);
     PM_AddChatAlias(".respawn", "sm_respawn");
 
-    RegConsoleCmd("sm_stoprespawn", Command_Respawn);
+    RegConsoleCmd("sm_stoprespawn", Command_StopRespawn);
     PM_AddChatAlias(".stoprespawn", "sm_stoprespawn");
 
     RegConsoleCmd("sm_spec", Command_Spec);
@@ -589,8 +494,6 @@ public void OnPluginStart() {
   }
 
   // New Plugin cvars
-  g_AlphabetizeNadeMenusCvar = CreateConVar("sm_practicemode_alphabetize_nades", "0",
-                                            "Whether menus of grenades are alphabetized by name.");
   g_BotRespawnTimeCvar = CreateConVar("sm_practicemode_bot_respawn_time", "3.0",
                                       "How long it should take bots placed with .bot to respawn");
   g_DryRunFreezeTimeCvar = CreateConVar("sm_practicemode_dry_run_freeze_time", "6",
@@ -598,9 +501,6 @@ public void OnPluginStart() {
   g_MaxHistorySizeCvar = CreateConVar(
       "sm_practicemode_max_grenade_history_size", "50000",
       "Maximum number of previous grenade throws saved in temporary history per-client. The temporary history is reset every map change. Set to 0 to disable.");
-  g_MaxGrenadesSavedCvar = CreateConVar(
-      "sm_practicemode_max_grenades_saved", "512",
-      "Maximum number of grenades that may be saved per-map, per-client. Set to 0 to disable.");
   g_SharedAllNadesCvar = CreateConVar(
       "sm_practicemode_share_all_nades", "0",
       "When set to 1, grenades aren't per-user; they are shared amongst all users that have grenade access. Grenades are not displayed by user, but displayed in 1 grouping. Anyone on the server can edit other users' grenades.");
@@ -1116,7 +1016,7 @@ public void ReadPracticeSettings() {
   }
   if (g_MapList.Length == 0) {
     g_MapList.PushString("de_cache");
-    g_MapList.PushString("de_cbble");
+    g_MapList.PushString("de_ancient");
     g_MapList.PushString("de_dust2");
     g_MapList.PushString("de_inferno");
     g_MapList.PushString("de_mirage");
