@@ -61,6 +61,7 @@ ConVar g_PatchGrenadeTrajectoryCvar;
 ConVar g_GrenadeTrajectoryClientColorCvar;
 ConVar g_RandomGrenadeTrajectoryCvar;
 
+ConVar g_AllowNoclipCvar;
 ConVar g_GrenadeTrajectoryCvar;
 ConVar g_GrenadeThicknessCvar;
 ConVar g_GrenadeTimeCvar;
@@ -131,6 +132,8 @@ enum ClientColor {
   ClientColor_Blue = 3,
   ClientColor_Orange = 4,
 };
+
+int g_LastNoclipCommand[MAXPLAYERS + 1];
 
 // Timer data. Supports 3 modes:
 enum TimerType {
@@ -490,8 +493,12 @@ public void OnPluginStart() {
   AutoExecConfig(true, "practicemode");
 
   // New cvars we don't want saved in the autoexec'd file
-  g_InfiniteMoneyCvar = CreateConVar("sm_infinite_money", "0",
-                                     "Whether clients recieve infinite money", FCVAR_DONTRECORD);
+  g_AllowNoclipCvar = 
+      CreateConVar("sm_allow_noclip", "0",
+                  "Whether players may use .noclip in chat to toggle noclip", FCVAR_DONTRECORD);
+  g_InfiniteMoneyCvar = 
+      CreateConVar("sm_infinite_money", "0",
+                  "Whether clients recieve infinite money", FCVAR_DONTRECORD);
   g_PatchGrenadeTrajectoryCvar =
       CreateConVar("sm_patch_grenade_trajectory_cvar", "1",
                    "Whether the plugin patches sv_grenade_trajectory with its own grenade trails");
@@ -789,6 +796,38 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
   if (IsPlayer(client) && g_OnCountDownRec[client] && StrEqual(command, "say")) {
     ClientCommand(client, "sm_countdown %s", text);
     g_OnCountDownRec[client] = false;
+  }
+  if (g_AllowNoclipCvar.IntValue != 0 && StrEqual(text, ".noclip") && IsPlayer(client)) {
+    PerformNoclipAction(client);
+  }
+}
+
+public void PerformNoclipAction(int client) {
+  // The move type is also set on the next frame. This is a dirty trick to deal
+  // with clients that have a double-bind of "noclip; say .noclip" to work on both
+  // ESEA-practice and local sv_cheats servers. Since this plugin can have both enabled
+  // (sv_cheats and allow noclip), this double bind would cause the noclip type to be toggled twice.
+  // Therefore the fix is to only perform 1 noclip action per-frame per-client at most, implemented
+  // by saving the frame count of each use in g_LastNoclipCommand.
+  if (g_LastNoclipCommand[client] == GetGameTickCount() ||
+      (g_AllowNoclipCvar.IntValue == 0 && GetCvarIntSafe("sv_cheats") == 0)) {
+    return;
+  }
+
+  // Stop recording if we are.
+  if (g_BotMimicLoaded && g_InBotReplayMode) {
+    FinishRecording(client, false);
+  }
+
+  g_LastNoclipCommand[client] = GetGameTickCount();
+  MoveType t = GetEntityMoveType(client);
+  MoveType next = (t == MOVETYPE_WALK) ? MOVETYPE_NOCLIP : MOVETYPE_WALK;
+  SetEntityMoveType(client, next);
+
+  if (next == MOVETYPE_WALK) {
+    SetEntProp(client, Prop_Data, "m_CollisionGroup", 5);
+  } else {
+    SetEntProp(client, Prop_Data, "m_CollisionGroup", 0);
   }
 }
 
