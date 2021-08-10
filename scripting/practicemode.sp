@@ -189,6 +189,7 @@ Handle g_OnPracticeModeSettingsRead = INVALID_HANDLE;
 #include "practicemode/botreplay_data.sp"
 #include "practicemode/botreplay_editor.sp"
 #include "practicemode/botreplay_utils.sp"
+#include "practicemode/botreplay_new.sp"
 
 #include "practicemode/backups.sp"
 #include "practicemode/bots.sp"
@@ -243,6 +244,12 @@ public void OnPluginStart() {
     g_ClientGrenadeThrowTimes[i] = new ArrayList(2);
     g_ClientBots[i] = new ArrayList();
     g_OnCountDownRec[i] = false;
+  }
+
+  // for test
+  {
+    RegConsoleCmd("sm_botreplaytest", Command_BotReplayTest);
+    PM_AddChatAlias(".t", "sm_botreplaytest");
   }
 
   {

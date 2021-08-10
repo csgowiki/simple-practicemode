@@ -110,6 +110,7 @@ void ReplayRole(const char[] id, int client, int role) {
   DataPack pack = new DataPack();
   pack.WriteCell(client);
   pack.WriteString(filepath);
+  
   g_StopBotSignal[client] = false;
   g_CurrentReplayNadeIndex[client] = 0;
   RequestFrame(StartReplay, pack);
