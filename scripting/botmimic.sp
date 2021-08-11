@@ -61,29 +61,29 @@ enum struct AdditionalTeleport {
 }
 
 
-enum FileHeader {
-	FH_binaryFormatVersion = 0,
-	FH_recordEndTime,
-	String:FH_recordName[MAX_RECORD_NAME_LENGTH],
-	FH_tickCount,
-	FH_bookmarkCount,
-	Float:FH_initialPosition[3],
-	Float:FH_initialAngles[3],
-	ArrayList:FH_bookmarks,
-	ArrayList:FH_frames
+enum struct FileHeader {
+	int FH_binaryFormatVersion;
+	int FH_recordEndTime;
+	char FH_recordName[MAX_RECORD_NAME_LENGTH];
+	int FH_tickCount;
+	int FH_bookmarkCount;
+	float FH_initialPosition[3];
+	float FH_initialAngles[3];
+	ArrayList FH_bookmarks;
+	ArrayList FH_frames;
 }
 
-enum Bookmarks {
-	BKM_frame,
-	BKM_additionalTeleportTick,
-	String:BKM_name[MAX_BOOKMARK_NAME_LENGTH]
-};
+enum struct Bookmarks {
+	int BKM_frame;
+	int BKM_additionalTeleportTick;
+	char BKM_name[MAX_BOOKMARK_NAME_LENGTH];
+}
 
 // Used to fire the OnPlayerMimicBookmark effciently during playback
-enum BookmarkWhileMimicing {
-	BWM_frame, // The frame this bookmark was saved in
-	BWM_index // The index into the FH_bookmarks array in the fileheader for the corresponding bookmark (to get the name)
-};
+enum struct BookmarkWhileMimicing {
+	int BWM_frame; // The frame this bookmark was saved in
+	int BWM_index; // The index into the FH_bookmarks array in the fileheader for the corresponding bookmark (to get the name)
+}
 
 // Where did he start recording. The bot is teleported to this position on replay.
 float g_fInitialPosition[MAXPLAYERS+1][3];
@@ -120,7 +120,7 @@ int g_iBotMimicRecordTickCount[MAXPLAYERS+1] = {0,...};
 int g_iBotActiveWeapon[MAXPLAYERS+1] = {-1,...};
 bool g_bBotSwitchedWeapon[MAXPLAYERS+1];
 bool g_bValidTeleportCall[MAXPLAYERS+1];
-int g_iBotMimicNextBookmarkTick[MAXPLAYERS+1][BookmarkWhileMimicing];
+BookmarkWhileMimicing g_iBotMimicNextBookmarkTick[MAXPLAYERS+1];
 
 Handle g_hfwdOnStartRecording;
 Handle g_hfwdOnRecordingPauseStateChanged;
@@ -272,20 +272,20 @@ public void OnMapStart()
 	// Clear old records for old map
 	int iSize = g_hSortedRecordList.Length;
 	char sPath[PLATFORM_MAX_PATH];
-	int iFileHeader[FileHeader];
+	FileHeader iFileHeader;
 	Handle hAdditionalTeleport;
 	for(int i=0;i<iSize;i++)
 	{
 		g_hSortedRecordList.GetString(i, sPath, sizeof(sPath));
-		if (!g_hLoadedRecords.GetArray(sPath, iFileHeader[0], view_as<int>(FileHeader)))
+		if (!g_hLoadedRecords.GetArray(sPath, iFileHeader, sizeof(FileHeader)))
 		{
 			LogError("Internal state error. %s was in the sorted list, but not in the actual storage.", sPath);
 			continue;
 		}
-		if(iFileHeader[FH_frames] != null)
-			delete iFileHeader[FH_frames];
-		if(iFileHeader[FH_bookmarks] != null)
-			delete iFileHeader[FH_bookmarks];
+		if(iFileHeader.FH_frames != null)
+			delete iFileHeader.FH_frames;
+		if(iFileHeader.FH_bookmarks != null)
+			delete iFileHeader.FH_bookmarks;
 		if(g_hLoadedRecordsAdditionalTeleport.GetValue(sPath, hAdditionalTeleport))
 			delete hAdditionalTeleport;
 	}
@@ -597,16 +597,16 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 	}
 	
 	// See if there's a bookmark on this tick
-	if(g_iBotMimicTick[client] == g_iBotMimicNextBookmarkTick[client][BWM_frame])
+	if(g_iBotMimicTick[client] == g_iBotMimicNextBookmarkTick[client].BWM_frame)
 	{
 		// Get the file header of the current playing record.
 		char sPath[PLATFORM_MAX_PATH];
 		GetFileFromFrameHandle(g_hBotMimicsRecord[client], sPath, sizeof(sPath));
-		int iFileHeader[FileHeader];
-		g_hLoadedRecords.GetArray(sPath, iFileHeader[0], view_as<int>(FileHeader));
+		FileHeader iFileHeader;
+		g_hLoadedRecords.GetArray(sPath, iFileHeader, sizeof(FileHeader));
 
-		int iBookmark[Bookmarks];
-		iFileHeader[FH_bookmarks].GetArray(g_iBotMimicNextBookmarkTick[client][BWM_index], iBookmark[0], view_as<int>(Bookmarks));
+		Bookmarks iBookmark;
+		iFileHeader.FH_bookmarks.GetArray(g_iBotMimicNextBookmarkTick[client].BWM_index, iBookmark, sizeof(Bookmarks));
 		
 		// Cache the next tick in which we should fire the forward.
 		UpdateNextBookmarkTick(client);
@@ -614,7 +614,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 		// Call the forward
 		Call_StartForward(g_hfwdOnPlayerMimicBookmark);
 		Call_PushCell(client);
-		Call_PushString(iBookmark[BKM_name]);
+		Call_PushString(iBookmark.BKM_name);
 		Call_Finish();
 	}
 	
@@ -777,7 +777,7 @@ public int StartRecording(Handle plugin, int numParams)
 	
 	g_hRecording[client] = new ArrayList(sizeof(FrameInfo));
 	g_hRecordingAdditionalTeleport[client] = new ArrayList(sizeof(AdditionalTeleport));
-	g_hRecordingBookmarks[client] = new ArrayList(view_as<int>(Bookmarks));
+	g_hRecordingBookmarks[client] = new ArrayList(sizeof(Bookmarks));
 	GetClientAbsOrigin(client, g_fInitialPosition[client]);
 	GetClientEyeAngles(client, g_fInitialAngles[client]);
 	g_iRecordedTicks[client] = 0;
@@ -963,19 +963,19 @@ public int StopRecording(Handle plugin, int numParams)
 		Format(sPath, sizeof(sPath), "%s/%d.rec", sPath, iEndTime);
 		
 		// Add to our loaded record list
-		int iHeader[FileHeader];
-		iHeader[FH_binaryFormatVersion] = BINARY_FORMAT_VERSION;
-		iHeader[FH_recordEndTime] = iEndTime;
-		iHeader[FH_tickCount] = g_hRecording[client].Length;
-		strcopy(iHeader[FH_recordName], MAX_RECORD_NAME_LENGTH, g_sRecordName[client]);
-		Array_Copy(g_fInitialPosition[client], iHeader[FH_initialPosition], 3);
-		Array_Copy(g_fInitialAngles[client], iHeader[FH_initialAngles], 3);
-		iHeader[FH_frames] = g_hRecording[client];
+		FileHeader iHeader;
+		iHeader.FH_binaryFormatVersion = BINARY_FORMAT_VERSION;
+		iHeader.FH_recordEndTime = iEndTime;
+		iHeader.FH_tickCount = g_hRecording[client].Length;
+		strcopy(iHeader.FH_recordName, MAX_RECORD_NAME_LENGTH, g_sRecordName[client]);
+		Array_Copy(g_fInitialPosition[client], iHeader.FH_initialPosition, 3);
+		Array_Copy(g_fInitialAngles[client], iHeader.FH_initialAngles, 3);
+		iHeader.FH_frames = g_hRecording[client];
 		
 		if (g_hRecordingBookmarks[client].Length > 0)
 		{
-			iHeader[FH_bookmarkCount] = g_hRecordingBookmarks[client].Length;
-			iHeader[FH_bookmarks] = g_hRecordingBookmarks[client];
+			iHeader.FH_bookmarkCount = g_hRecordingBookmarks[client].Length;
+			iHeader.FH_bookmarks = g_hRecordingBookmarks[client];
 		}
 		else
 		{
@@ -993,7 +993,7 @@ public int StopRecording(Handle plugin, int numParams)
 		
 		WriteRecordToDisk(sPath, iHeader);
 		
-		g_hLoadedRecords.SetArray(sPath, iHeader[0], view_as<int>(FileHeader));
+		g_hLoadedRecords.SetArray(sPath, iHeader, sizeof(FileHeader));
 		g_hLoadedRecordsCategory.SetString(sPath, g_sRecordCategory[client]);
 		g_hSortedRecordList.PushString(sPath);
 		if(g_hSortedCategoryList.FindString(g_sRecordCategory[client]) == -1)
@@ -1050,12 +1050,12 @@ public int SaveBookmark(Handle plugin, int numParams)
 	GetNativeString(2, sBookmarkName, sizeof(sBookmarkName));
 	
 	// First check if there already is a bookmark with this name
-	int iBookmark[Bookmarks];
+	Bookmarks iBookmark;
 	int iSize = g_hRecordingBookmarks[client].Length;
 	for(int i=0;i<iSize;i++)
 	{
-		g_hRecordingBookmarks[client].GetArray(i, iBookmark[0], view_as<int>(Bookmarks));
-		if(StrEqual(iBookmark[BKM_name], sBookmarkName, false))
+		g_hRecordingBookmarks[client].GetArray(i, iBookmark, sizeof(Bookmarks));
+		if(StrEqual(iBookmark.BKM_name, sBookmarkName, false))
 		{
 			ThrowNativeError(SP_ERROR_NATIVE, "There already is a bookmark named \"%s\".", sBookmarkName);
 			return;
@@ -1106,10 +1106,10 @@ public int SaveBookmark(Handle plugin, int numParams)
 	g_hRecording[client].SetArray(g_iRecordedTicks[client]-1, iFrame, sizeof(FrameInfo));
 	
 	// Save the bookmark
-	iBookmark[BKM_frame] = g_iRecordedTicks[client]-1;
-	iBookmark[BKM_additionalTeleportTick] = g_iCurrentAdditionalTeleportIndex[client]-1;
-	strcopy(iBookmark[BKM_name], MAX_BOOKMARK_NAME_LENGTH, sBookmarkName);
-	g_hRecordingBookmarks[client].PushArray(iBookmark[0], view_as<int>(Bookmarks));
+	iBookmark.BKM_frame = g_iRecordedTicks[client] - 1;
+	iBookmark.BKM_additionalTeleportTick = g_iCurrentAdditionalTeleportIndex[client]-1;
+	strcopy(iBookmark.BKM_name, MAX_BOOKMARK_NAME_LENGTH, sBookmarkName);
+	g_hRecordingBookmarks[client].PushArray(iBookmark, sizeof(Bookmarks));
 	
 	// Inform other plugins, that there's been a bookmark saved.
 	Call_StartForward(g_hfwdOnRecordingBookmarkSaved);
@@ -1126,8 +1126,8 @@ public int DeleteRecord(Handle plugin, int numParams)
 	GetNativeString(1, sPath, iLen+1);
 	
 	// Do we have this record loaded?
-	int iFileHeader[FileHeader];
-	if(!g_hLoadedRecords.GetArray(sPath, iFileHeader[0], view_as<int>(FileHeader)))
+	FileHeader iFileHeader;
+	if(!g_hLoadedRecords.GetArray(sPath, iFileHeader, sizeof(FileHeader)))
 	{
 		if(!FileExists(sPath))
 			return -1;
@@ -1139,12 +1139,12 @@ public int DeleteRecord(Handle plugin, int numParams)
 	}
 	
 	int iCount;
-	if(iFileHeader[FH_frames] != null)
+	if(iFileHeader.FH_frames != null)
 	{
 		for(int i=1;i<=MaxClients;i++)
 		{
 			// Stop the bots from mimicing this one
-			if(g_hBotMimicsRecord[i] == iFileHeader[FH_frames])
+			if(g_hBotMimicsRecord[i] == iFileHeader.FH_frames)
 			{
 				BotMimic_StopPlayerMimic(i);
 				iCount++;
@@ -1152,12 +1152,12 @@ public int DeleteRecord(Handle plugin, int numParams)
 		}
 		
 		// Discard the frames
-		delete iFileHeader[FH_frames];
+		delete iFileHeader.FH_frames;
 	}
 	
-	if(iFileHeader[FH_bookmarks] != null)
+	if(iFileHeader.FH_bookmarks != null)
 	{
-		delete iFileHeader[FH_bookmarks];
+		delete iFileHeader.FH_bookmarks;
 	}
 	
 	char sCategory[64];
@@ -1178,7 +1178,7 @@ public int DeleteRecord(Handle plugin, int numParams)
 	}
 	
 	Call_StartForward(g_hfwdOnRecordDeleted);
-	Call_PushString(iFileHeader[FH_recordName]);
+	Call_PushString(iFileHeader.FH_recordName);
 	Call_PushString(sCategory);
 	Call_PushString(sPath);
 	Call_Finish();
@@ -1253,16 +1253,17 @@ public int GoToBookmark(Handle plugin, int numParams)
 	char sPath[PLATFORM_MAX_PATH];
 	GetFileFromFrameHandle(g_hBotMimicsRecord[client], sPath, sizeof(sPath));
 	
-	int iFileHeader[FileHeader];
-	g_hLoadedRecords.GetArray(sPath, iFileHeader[0], view_as<int>(FileHeader));
+	FileHeader iFileHeader;
+	g_hLoadedRecords.GetArray(sPath, iFileHeader, sizeof(FileHeader));
 	
 	// Get the bookmark with this name
-	int iBookmark[Bookmarks], iBookmarkIndex;
+	Bookmarks iBookmark;
+	int iBookmarkIndex;
 	bool bBookmarkFound;
-	for(;iBookmarkIndex<iFileHeader[FH_bookmarkCount];iBookmarkIndex++)
+	for(; iBookmarkIndex < iFileHeader.FH_bookmarkCount; iBookmarkIndex++)
 	{
-		iFileHeader[FH_bookmarks].GetArray(iBookmarkIndex, iBookmark[0], view_as<int>(Bookmarks));
-		if(StrEqual(iBookmark[BKM_name], sBookmarkName, false))
+		iFileHeader.FH_bookmarks.GetArray(iBookmarkIndex, iBookmark, sizeof(Bookmarks));
+		if(StrEqual(iBookmark.BKM_name, sBookmarkName, false))
 		{
 			bBookmarkFound = true;
 			break;
@@ -1275,12 +1276,12 @@ public int GoToBookmark(Handle plugin, int numParams)
 		return;
 	}
 	
-	g_iBotMimicTick[client] = iBookmark[BKM_frame];
-	g_iCurrentAdditionalTeleportIndex[client] = iBookmark[BKM_additionalTeleportTick];
+	g_iBotMimicTick[client] = iBookmark.BKM_frame;
+	g_iCurrentAdditionalTeleportIndex[client] = iBookmark.BKM_additionalTeleportTick;
 	
 	// Remember that we're now at this bookmark.
-	g_iBotMimicNextBookmarkTick[client][BWM_frame] = iBookmark[BKM_frame];
-	g_iBotMimicNextBookmarkTick[client][BWM_index] = iBookmarkIndex;
+	g_iBotMimicNextBookmarkTick[client].BWM_frame = iBookmark.BKM_frame;
+	g_iBotMimicNextBookmarkTick[client].BWM_index = iBookmarkIndex;
 }
 
 public int StopPlayerMimic(Handle plugin, int numParams)
@@ -1306,11 +1307,11 @@ public int StopPlayerMimic(Handle plugin, int numParams)
 	g_iCurrentAdditionalTeleportIndex[client] = 0;
 	g_iBotMimicRecordTickCount[client] = 0;
 	g_bValidTeleportCall[client] = false;
-	g_iBotMimicNextBookmarkTick[client][BWM_frame] = -1;
-	g_iBotMimicNextBookmarkTick[client][BWM_index] = -1;
+	g_iBotMimicNextBookmarkTick[client].BWM_frame = -1;
+	g_iBotMimicNextBookmarkTick[client].BWM_index = -1;
 	
-	int iFileHeader[FileHeader];
-	g_hLoadedRecords.GetArray(sPath, iFileHeader[0], view_as<int>(FileHeader));
+	FileHeader iFileHeader;
+	g_hLoadedRecords.GetArray(sPath, iFileHeader, sizeof(FileHeader));
 	
 	SDKUnhook(client, SDKHook_WeaponCanSwitchTo, Hook_WeaponCanSwitchTo);
 	
@@ -1319,7 +1320,7 @@ public int StopPlayerMimic(Handle plugin, int numParams)
 	
 	Call_StartForward(g_hfwdOnPlayerStopsMimicing);
 	Call_PushCell(client);
-	Call_PushString(iFileHeader[FH_recordName]);
+	Call_PushString(iFileHeader.FH_recordName);
 	Call_PushString(sCategory);
 	Call_PushString(sPath);
 	Call_Finish();
@@ -1359,17 +1360,18 @@ public int PlayRecordByName(Handle plugin, int numParams)
 	
 	char sPath[PLATFORM_MAX_PATH];
 	int iSize = g_hSortedRecordList.Length;
-	int iFileHeader[FileHeader], iRecentTimeStamp;
+	FileHeader iFileHeader;
+	int iRecentTimeStamp;
 	char sRecentPath[PLATFORM_MAX_PATH];
 	for(int i=0;i<iSize;i++)
 	{
 		g_hSortedRecordList.GetString(i, sPath, sizeof(sPath));
-		g_hLoadedRecords.GetArray(sPath, iFileHeader[0], view_as<int>(FileHeader));
-		if(StrEqual(sName, iFileHeader[FH_recordName]))
+		g_hLoadedRecords.GetArray(sPath, iFileHeader, sizeof(FileHeader));
+		if(StrEqual(sName, iFileHeader.FH_recordName))
 		{
-			if(iRecentTimeStamp == 0 || iRecentTimeStamp < iFileHeader[FH_recordEndTime])
+			if(iRecentTimeStamp == 0 || iRecentTimeStamp < iFileHeader.FH_recordEndTime)
 			{
-				iRecentTimeStamp = iFileHeader[FH_recordEndTime];
+				iRecentTimeStamp = iFileHeader.FH_recordEndTime;
 				strcopy(sRecentPath, sizeof(sRecentPath), sPath);
 			}
 		}
@@ -1399,8 +1401,8 @@ public int ResetPlayback(Handle plugin, int numParams)
 	g_iBotMimicTick[client] = 0;
 	g_iCurrentAdditionalTeleportIndex[client] = 0;
 	g_bValidTeleportCall[client] = false;
-	g_iBotMimicNextBookmarkTick[client][BWM_frame] = -1;
-	g_iBotMimicNextBookmarkTick[client][BWM_index] = -1;
+	g_iBotMimicNextBookmarkTick[client].BWM_frame = -1;
+	g_iBotMimicNextBookmarkTick[client].BWM_index = -1;
 	UpdateNextBookmarkTick(client);
 }
 
@@ -1416,8 +1418,8 @@ public int GetFileHeaders(Handle plugin, int numParams)
 		return view_as<int>(BM_FileNotFound);
 	}
 	
-	int iFileHeader[FileHeader];
-	if(!g_hLoadedRecords.GetArray(sPath, iFileHeader[0], view_as<int>(FileHeader)))
+	FileHeader iFileHeader;
+	if(!g_hLoadedRecords.GetArray(sPath, iFileHeader, sizeof(FileHeader)))
 	{
 		char sCategory[64];
 		if(!g_hLoadedRecordsCategory.GetString(sPath, sCategory, sizeof(sCategory)))
@@ -1427,23 +1429,23 @@ public int GetFileHeaders(Handle plugin, int numParams)
 			return view_as<int>(error);
 	}
 	
-	int iExposedFileHeader[BMFileHeader];
-	iExposedFileHeader[BMFH_binaryFormatVersion] = iFileHeader[FH_binaryFormatVersion];
-	iExposedFileHeader[BMFH_recordEndTime] = iFileHeader[FH_recordEndTime];
-	strcopy(iExposedFileHeader[BMFH_recordName], MAX_RECORD_NAME_LENGTH, iFileHeader[FH_recordName]);
-	iExposedFileHeader[BMFH_tickCount] = iFileHeader[FH_tickCount];
-	Array_Copy(iFileHeader[FH_initialPosition], iExposedFileHeader[BMFH_initialPosition], 3);
-	Array_Copy(iFileHeader[FH_initialAngles], iExposedFileHeader[BMFH_initialAngles], 3);
-	iExposedFileHeader[BMFH_bookmarkCount] = iFileHeader[FH_bookmarkCount];
+	BMFileHeader iExposedFileHeader;
+	iExposedFileHeader.BMFH_binaryFormatVersion = iFileHeader.FH_binaryFormatVersion;
+	iExposedFileHeader.BMFH_recordEndTime = iFileHeader.FH_recordEndTime;
+	strcopy(iExposedFileHeader.BMFH_recordName, MAX_RECORD_NAME_LENGTH, iFileHeader.FH_recordName);
+	iExposedFileHeader.BMFH_tickCount = iFileHeader.FH_tickCount;
+	Array_Copy(iFileHeader.FH_initialPosition, iExposedFileHeader.BMFH_initialPosition, 3);
+	Array_Copy(iFileHeader.FH_initialAngles, iExposedFileHeader.BMFH_initialAngles, 3);
+	iExposedFileHeader.BMFH_bookmarkCount = iFileHeader.FH_bookmarkCount;
 	
 	
-	int iSize = view_as<int>(BMFileHeader);
+	int iSize = sizeof(BMFileHeader);
 	if(numParams > 2)
 		iSize = GetNativeCell(3);
-	if(iSize > view_as<int>(BMFileHeader))
-		iSize = view_as<int>(BMFileHeader);
+	if(iSize > sizeof(BMFileHeader))
+		iSize = sizeof(BMFileHeader);
 	
-	SetNativeArray(2, iExposedFileHeader[0], iSize);
+	SetNativeArray(2, iExposedFileHeader, iSize);
 	return view_as<int>(BM_NoError);
 }
 
@@ -1463,8 +1465,8 @@ public int ChangeRecordName(Handle plugin, int numParams)
 	if(!g_hLoadedRecordsCategory.GetString(sPath, sCategory, sizeof(sCategory)))
 		strcopy(sCategory, sizeof(sCategory), DEFAULT_CATEGORY);
 	
-	int iFileHeader[FileHeader];
-	if(!g_hLoadedRecords.GetArray(sPath, iFileHeader[0], view_as<int>(FileHeader)))
+	FileHeader iFileHeader;
+	if(!g_hLoadedRecords.GetArray(sPath, iFileHeader, sizeof(FileHeader)))
 	{
 		BMError error = LoadRecordFromFile(sPath, sCategory, iFileHeader, false, false);
 		if(error != BM_NoError)
@@ -1472,15 +1474,15 @@ public int ChangeRecordName(Handle plugin, int numParams)
 	}
 	
 	// Load the whole record first or we'd lose the frames!
-	if(iFileHeader[FH_frames] == null)
+	if(iFileHeader.FH_frames == null)
 		LoadRecordFromFile(sPath, sCategory, iFileHeader, false, true);
 	
 	GetNativeStringLength(2, iLen);
 	char[] sName = new char[iLen+1];
 	GetNativeString(2, sName, iLen+1);
 	
-	strcopy(iFileHeader[FH_recordName], MAX_RECORD_NAME_LENGTH, sName);
-	g_hLoadedRecords.SetArray(sPath, iFileHeader[0], view_as<int>(FileHeader));
+	strcopy(iFileHeader.FH_recordName, MAX_RECORD_NAME_LENGTH, sName);
+	g_hLoadedRecords.SetArray(sPath, iFileHeader, sizeof(FileHeader));
 	
 	WriteRecordToDisk(sPath, iFileHeader);
 	
@@ -1524,8 +1526,8 @@ public int GetRecordBookmarks(Handle plugin, int numParams)
 		return view_as<int>(BM_FileNotFound);
 	}
 	
-	int iFileHeader[FileHeader];
-	if(!g_hLoadedRecords.GetArray(sPath, iFileHeader[0], view_as<int>(FileHeader)))
+	FileHeader iFileHeader;
+	if(!g_hLoadedRecords.GetArray(sPath, iFileHeader, sizeof(FileHeader)))
 	{
 		char sCategory[64];
 		if(!g_hLoadedRecordsCategory.GetString(sPath, sCategory, sizeof(sCategory)))
@@ -1536,11 +1538,11 @@ public int GetRecordBookmarks(Handle plugin, int numParams)
 	}
 	
 	ArrayList hBookmarks = new ArrayList(ByteCountToCells(MAX_BOOKMARK_NAME_LENGTH));
-	int iBookmark[Bookmarks];
-	for(int i=0;i<iFileHeader[FH_bookmarkCount];i++)
+	Bookmarks iBookmark;
+	for(int i = 0; i < iFileHeader.FH_bookmarkCount; i++)
 	{
-		iFileHeader[FH_bookmarks].GetArray(i, iBookmark[0], view_as<int>(Bookmarks));
-		hBookmarks.PushString(iBookmark[BKM_name]);
+		iFileHeader.FH_bookmarks.GetArray(i, iBookmark, sizeof(Bookmarks));
+		hBookmarks.PushString(iBookmark.BKM_name);
 	}
 	
 	Handle hClone = CloneHandle(hBookmarks, plugin);
@@ -1576,7 +1578,7 @@ void ParseRecordsInDirectory(const char[] sPath, const char[] sCategory, bool su
 	
 	char sFile[64], sFilePath[PLATFORM_MAX_PATH];
 	FileType fileType;
-	int iFileHeader[FileHeader];
+	FileHeader iFileHeader;
 	while(hDir.GetNext(sFile, sizeof(sFile), fileType))
 	{
 		switch(fileType)
@@ -1603,7 +1605,7 @@ void ParseRecordsInDirectory(const char[] sPath, const char[] sCategory, bool su
 	delete hDir;
 }
 
-void WriteRecordToDisk(const char[] sPath, int iFileHeader[FileHeader])
+void WriteRecordToDisk(const char[] sPath, FileHeader iFileHeader)
 {
 	File hFile = OpenFile(sPath, "wb");
 	if(hFile == null)
@@ -1613,41 +1615,41 @@ void WriteRecordToDisk(const char[] sPath, int iFileHeader[FileHeader])
 	}
 	
 	hFile.WriteInt32(BM_MAGIC);
-	hFile.WriteInt8(iFileHeader[FH_binaryFormatVersion]);
-	hFile.WriteInt32(iFileHeader[FH_recordEndTime]);
-	hFile.WriteInt8(strlen(iFileHeader[FH_recordName]));
-	hFile.WriteString(iFileHeader[FH_recordName], false);
+	hFile.WriteInt8(iFileHeader.FH_binaryFormatVersion);
+	hFile.WriteInt32(iFileHeader.FH_recordEndTime);
+	hFile.WriteInt8(strlen(iFileHeader.FH_recordName));
+	hFile.WriteString(iFileHeader.FH_recordName, false);
 	
-	hFile.Write(view_as<int>(iFileHeader[FH_initialPosition]), 3, 4);
-	hFile.Write(view_as<int>(iFileHeader[FH_initialAngles]), 2, 4);
+	hFile.Write(iFileHeader.FH_initialPosition, 3, 4);
+	hFile.Write(iFileHeader.FH_initialAngles, 2, 4);
 	
 	ArrayList hAdditionalTeleport;
 	int iATIndex;
 	g_hLoadedRecordsAdditionalTeleport.GetValue(sPath, hAdditionalTeleport);
 	
-	int iTickCount = iFileHeader[FH_tickCount];
+	int iTickCount = iFileHeader.FH_tickCount;
 	hFile.WriteInt32(iTickCount);
 	
-	int iBookmarkCount = iFileHeader[FH_bookmarkCount];
+	int iBookmarkCount = iFileHeader.FH_bookmarkCount;
 	hFile.WriteInt32(iBookmarkCount);
 	
 	// Write all bookmarks
-	ArrayList hBookmarks = iFileHeader[FH_bookmarks];
+	ArrayList hBookmarks = iFileHeader.FH_bookmarks;
 	
-	int iBookmark[Bookmarks];
+	Bookmarks iBookmark;
 	for(int i=0;i<iBookmarkCount;i++)
 	{
-		hBookmarks.GetArray(i, iBookmark[0], view_as<int>(Bookmarks));
+		hBookmarks.GetArray(i, iBookmark, sizeof(Bookmarks));
 		
-		hFile.WriteInt32(iBookmark[BKM_frame]);
-		hFile.WriteInt32(iBookmark[BKM_additionalTeleportTick]);
-		hFile.WriteString(iBookmark[BKM_name], true);
+		hFile.WriteInt32(iBookmark.BKM_frame);
+		hFile.WriteInt32(iBookmark.BKM_additionalTeleportTick);
+		hFile.WriteString(iBookmark.BKM_name, true);
 	}
 	
 	FrameInfo iFrame;
 	for(int i=0;i<iTickCount;i++)
 	{
-		iFileHeader[FH_frames].GetArray(i, iFrame, sizeof(FrameInfo));
+		iFileHeader.FH_frames.GetArray(i, iFrame, sizeof(FrameInfo));
 		hFile.Write(iFrame, sizeof(FrameInfo), 4);
 		
 		// Handle the optional Teleport call
@@ -1668,18 +1670,18 @@ void WriteRecordToDisk(const char[] sPath, int iFileHeader[FileHeader])
 	delete hFile;
 }
 
-BMError LoadRecordFromFile(const char[] path, const char[] sCategory, int headerInfo[FileHeader], bool onlyHeader, bool forceReload)
+BMError LoadRecordFromFile(const char[] path, const char[] sCategory, FileHeader headerInfo, bool onlyHeader, bool forceReload)
 {
 	if(!FileExists(path))
 		return BM_FileNotFound;
 	
 	// Make sure the handle references are null in the input structure.
-	headerInfo[FH_frames] = null;
-	headerInfo[FH_bookmarks] = null;
+	headerInfo.FH_frames = null;
+	headerInfo.FH_bookmarks = null;
 
 	// Already loaded that file?
 	bool bAlreadyLoaded = false;
-	if(g_hLoadedRecords.GetArray(path, headerInfo[0], view_as<int>(FileHeader)))
+	if(g_hLoadedRecords.GetArray(path, headerInfo, sizeof(FileHeader)))
 	{
 		// Header already loaded.
 		if(onlyHeader && !forceReload)
@@ -1702,7 +1704,7 @@ BMError LoadRecordFromFile(const char[] path, const char[] sCategory, int header
 	
 	int iBinaryFormatVersion;
 	hFile.ReadUint8(iBinaryFormatVersion);
-	headerInfo[FH_binaryFormatVersion] = iBinaryFormatVersion;
+	headerInfo.FH_binaryFormatVersion = iBinaryFormatVersion;
 	
 	if(iBinaryFormatVersion > BINARY_FORMAT_VERSION)
 	{
@@ -1717,8 +1719,8 @@ BMError LoadRecordFromFile(const char[] path, const char[] sCategory, int header
 	hFile.ReadString(sRecordName, iNameLength+1, iNameLength);
 	sRecordName[iNameLength] = '\0';
 	
-	hFile.Read(view_as<int>(headerInfo[FH_initialPosition]), 3, 4);
-	hFile.Read(view_as<int>(headerInfo[FH_initialAngles]), 2, 4);
+	hFile.Read(headerInfo.FH_initialPosition, 3, 4);
+	hFile.Read(headerInfo.FH_initialAngles, 2, 4);
 	
 	int iTickCount;
 	hFile.ReadInt32(iTickCount);
@@ -1728,14 +1730,14 @@ BMError LoadRecordFromFile(const char[] path, const char[] sCategory, int header
 	{
 		hFile.ReadInt32(iBookmarkCount);
 	}
-	headerInfo[FH_bookmarkCount] = iBookmarkCount;
+	headerInfo.FH_bookmarkCount = iBookmarkCount;
 	
-	headerInfo[FH_recordEndTime] = iRecordTime;
-	strcopy(headerInfo[FH_recordName], MAX_RECORD_NAME_LENGTH, sRecordName);
-	headerInfo[FH_tickCount] = iTickCount;
+	headerInfo.FH_recordEndTime = iRecordTime;
+	strcopy(headerInfo.FH_recordName, MAX_RECORD_NAME_LENGTH, sRecordName);
+	headerInfo.FH_tickCount = iTickCount;
 
-	delete headerInfo[FH_frames];
-	delete headerInfo[FH_bookmarks];
+	delete headerInfo.FH_frames;
+	delete headerInfo.FH_bookmarks;
 	ArrayList hAT;
 	if(g_hLoadedRecordsAdditionalTeleport.GetValue(path, hAT))
 	{
@@ -1750,21 +1752,21 @@ BMError LoadRecordFromFile(const char[] path, const char[] sCategory, int header
 	if (iBookmarkCount > 0)
 	{
 		// Read in all bookmarks
-		ArrayList hBookmarks = new ArrayList(view_as<int>(Bookmarks));
+		ArrayList hBookmarks = new ArrayList(sizeof(Bookmarks));
 		
-		int iBookmark[Bookmarks];
+		Bookmarks iBookmark;
 		for(int i=0;i<iBookmarkCount;i++)
 		{
-			hFile.ReadInt32(iBookmark[BKM_frame]);
-			hFile.ReadInt32(iBookmark[BKM_additionalTeleportTick]);
-			hFile.ReadString(iBookmark[BKM_name], MAX_BOOKMARK_NAME_LENGTH);
-			hBookmarks.PushArray(iBookmark[0], view_as<int>(Bookmarks));
+			hFile.ReadInt32(iBookmark.BKM_frame);
+			hFile.ReadInt32(iBookmark.BKM_additionalTeleportTick);
+			hFile.ReadString(iBookmark.BKM_name, MAX_BOOKMARK_NAME_LENGTH);
+			hBookmarks.PushArray(iBookmark, sizeof(Bookmarks));
 		}
 		
-		headerInfo[FH_bookmarks] = hBookmarks;
+		headerInfo.FH_bookmarks = hBookmarks;
 	}
 	
-	g_hLoadedRecords.SetArray(path, headerInfo[0], view_as<int>(FileHeader));
+	g_hLoadedRecords.SetArray(path, headerInfo, sizeof(FileHeader));
 	g_hLoadedRecordsCategory.SetString(path, sCategory);
 	
 	if(!bAlreadyLoaded)
@@ -1806,9 +1808,9 @@ BMError LoadRecordFromFile(const char[] path, const char[] sCategory, int header
 		}
 	}
 	
-	headerInfo[FH_frames] = hRecordFrames;
+	headerInfo.FH_frames = hRecordFrames;
 	
-	g_hLoadedRecords.SetArray(path, headerInfo[0], view_as<int>(FileHeader));
+	g_hLoadedRecords.SetArray(path, headerInfo, sizeof(FileHeader));
 	if(hAdditionalTeleport.Length > 0)
 		g_hLoadedRecordsAdditionalTeleport.SetValue(path, hAdditionalTeleport);
 	else
@@ -1831,11 +1833,11 @@ public int SortFuncADT_ByEndTime(int index1, int index2, Handle arrayHndl, Handl
 	array.GetString(index1, path1, sizeof(path1));
 	array.GetString(index2, path2, sizeof(path2));
 	
-	int header1[FileHeader], header2[FileHeader];
-	g_hLoadedRecords.GetArray(path1, header1[0], view_as<int>(FileHeader));
-	g_hLoadedRecords.GetArray(path2, header2[0], view_as<int>(FileHeader));
+	FileHeader header1, header2;
+	g_hLoadedRecords.GetArray(path1, header1, sizeof(FileHeader));
+	g_hLoadedRecords.GetArray(path2, header2, sizeof(FileHeader));
 	
-	return header1[FH_recordEndTime] - header2[FH_recordEndTime];
+	return header1.FH_recordEndTime - header2.FH_recordEndTime;
 }
 
 BMError PlayRecord(int client, const char[] path)
@@ -1846,11 +1848,11 @@ BMError PlayRecord(int client, const char[] path)
 		return BM_BadClient;
 	}
 	
-	int iFileHeader[FileHeader];
-	g_hLoadedRecords.GetArray(path, iFileHeader[0], view_as<int>(FileHeader));
+	FileHeader iFileHeader;
+	g_hLoadedRecords.GetArray(path, iFileHeader, sizeof(FileHeader));
 	
 	// That record isn't fully loaded yet. Do that now.
-	if(iFileHeader[FH_frames] == null)
+	if(iFileHeader.FH_frames == null)
 	{
 		char sCategory[64];
 		if(!g_hLoadedRecordsCategory.GetString(path, sCategory, sizeof(sCategory)))
@@ -1860,20 +1862,20 @@ BMError PlayRecord(int client, const char[] path)
 			return error;
 	}
 	
-	g_hBotMimicsRecord[client] = iFileHeader[FH_frames];
+	g_hBotMimicsRecord[client] = iFileHeader.FH_frames;
 	g_iBotMimicTick[client] = 0;
-	g_iBotMimicRecordTickCount[client] = iFileHeader[FH_tickCount];
+	g_iBotMimicRecordTickCount[client] = iFileHeader.FH_tickCount;
 	g_iCurrentAdditionalTeleportIndex[client] = 0;
 	g_iBotActiveWeapon[client] = INVALID_ENT_REFERENCE;
 	g_bBotSwitchedWeapon[client] = false;
 	
 	// Cache at which tick we should fire the first OnPlayerMimicBookmark forward.
-	g_iBotMimicNextBookmarkTick[client][BWM_frame] = -1;
-	g_iBotMimicNextBookmarkTick[client][BWM_index] = -1;
+	g_iBotMimicNextBookmarkTick[client].BWM_frame = -1;
+	g_iBotMimicNextBookmarkTick[client].BWM_index = -1;
 	UpdateNextBookmarkTick(client);
 	
-	Array_Copy(iFileHeader[FH_initialPosition], g_fInitialPosition[client], 3);
-	Array_Copy(iFileHeader[FH_initialAngles], g_fInitialAngles[client], 3);
+	Array_Copy(iFileHeader.FH_initialPosition, g_fInitialPosition[client], 3);
+	Array_Copy(iFileHeader.FH_initialAngles, g_fInitialAngles[client], 3);
 	
 	SDKHook(client, SDKHook_WeaponCanSwitchTo, Hook_WeaponCanSwitchTo);
 	
@@ -1887,7 +1889,7 @@ BMError PlayRecord(int client, const char[] path)
 	Action result;
 	Call_StartForward(g_hfwdOnPlayerStartsMimicing);
 	Call_PushCell(client);
-	Call_PushString(iFileHeader[FH_recordName]);
+	Call_PushString(iFileHeader.FH_recordName);
 	Call_PushString(sCategory);
 	Call_PushString(path);
 	Call_Finish(result);
@@ -1897,8 +1899,8 @@ BMError PlayRecord(int client, const char[] path)
 	{
 		g_hBotMimicsRecord[client] = null;
 		g_iBotMimicRecordTickCount[client] = 0;
-		g_iBotMimicNextBookmarkTick[client][BWM_frame] = -1;
-		g_iBotMimicNextBookmarkTick[client][BWM_index] = -1;
+		g_iBotMimicNextBookmarkTick[client].BWM_frame = -1;
+		g_iBotMimicNextBookmarkTick[client].BWM_index = -1;
 	}
 	
 	return BM_NoError;
@@ -1913,27 +1915,27 @@ void UpdateNextBookmarkTick(int client)
 	
 	char sPath[PLATFORM_MAX_PATH];
 	GetFileFromFrameHandle(g_hBotMimicsRecord[client], sPath, sizeof(sPath));
-	int iFileHeader[FileHeader];
-	g_hLoadedRecords.GetArray(sPath, iFileHeader[0], view_as<int>(FileHeader));
+	FileHeader iFileHeader;
+	g_hLoadedRecords.GetArray(sPath, iFileHeader, sizeof(FileHeader));
 	
-	if(iFileHeader[FH_bookmarks] == null)
+	if(iFileHeader.FH_bookmarks == null)
 		return;
 	
-	int iSize = iFileHeader[FH_bookmarks].Length;
+	int iSize = iFileHeader.FH_bookmarks.Length;
 	if(iSize == 0)
 		return;
 	
-	int iCurrentIndex = g_iBotMimicNextBookmarkTick[client][BWM_index];
+	int iCurrentIndex = g_iBotMimicNextBookmarkTick[client].BWM_index;
 	// We just reached some bookmark regularly and want to proceed to wait for the next one sequentially.
 	// If there is no further bookmarks, restart from the first one.
 	iCurrentIndex++;
 	if(iCurrentIndex >= iSize)
 		iCurrentIndex = 0;
 	
-	int iBookmark[Bookmarks];
-	iFileHeader[FH_bookmarks].GetArray(iCurrentIndex, iBookmark[0], view_as<int>(Bookmarks));
-	g_iBotMimicNextBookmarkTick[client][BWM_frame] = iBookmark[BKM_frame];
-	g_iBotMimicNextBookmarkTick[client][BWM_index] = iCurrentIndex;
+	Bookmarks iBookmark;
+	iFileHeader.FH_bookmarks.GetArray(iCurrentIndex, iBookmark, sizeof(Bookmarks));
+	g_iBotMimicNextBookmarkTick[client].BWM_frame = iBookmark.BKM_frame;
+	g_iBotMimicNextBookmarkTick[client].BWM_index = iCurrentIndex;
 }
 
 stock bool CheckCreateDirectory(const char[] sPath, int mode)
@@ -1954,12 +1956,12 @@ stock void GetFileFromFrameHandle(ArrayList frames, char[] path, int maxlen)
 {
 	int iSize = g_hSortedRecordList.Length;
 	char sPath[PLATFORM_MAX_PATH];
-	int iFileHeader[FileHeader];
+	FileHeader iFileHeader;
 	for(int i=0;i<iSize;i++)
 	{
 		g_hSortedRecordList.GetString(i, sPath, sizeof(sPath));
-		g_hLoadedRecords.GetArray(sPath, iFileHeader[0], view_as<int>(FileHeader));
-		if(iFileHeader[FH_frames] != frames)
+		g_hLoadedRecords.GetArray(sPath, iFileHeader, sizeof(FileHeader));
+		if(iFileHeader.FH_frames != frames)
 			continue;
 		
 		strcopy(path, maxlen, sPath);
