@@ -12,7 +12,7 @@ public Action Command_StartRecord(int client, int args) {
     if (!IsValidClient(client)) {
         return Plugin_Handled;
     }
-    if(BotMimic_IsPlayerMimicing(client)) {
+    if(BotMimic_IsPlayerRecording(client)) {
         PM_Message(client, "{LIGHT_RED}你正在录像{NORMAL}");
         return Plugin_Handled;
     }
@@ -25,7 +25,7 @@ public Action Command_StopRecord(int client, int args) {
 	if(!IsValidClient(client)) {
 		return Plugin_Handled;
     }
-	if(!BotMimic_IsPlayerMimicing(client)) {
+	if(!BotMimic_IsPlayerRecording(client)) {
         PM_Message(client, "{LIGHT_RED}你开没有开始录像{NORMAL}");
 		return Plugin_Handled;
 	}
@@ -54,7 +54,7 @@ public Action BotReplayTestTimer(Handle timer, int client) {
     CS_RespawnPlayer(bot);
     DataPack pack = new DataPack();
     pack.WriteCell(bot);
-    pack.WriteString("addons/sourcemod/data/botmimic/new/de_inferno/1628685242.rec");
+    pack.WriteString("addons/sourcemod/data/botmimic/new/de_inferno/hello.rec");
 
     RequestFrame(StartReplayTest, pack);
 

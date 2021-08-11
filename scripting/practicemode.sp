@@ -240,12 +240,12 @@ public void OnPluginStart() {
 
   // for test
   {
-    RegConsoleCmd("sm_botreplaytest", Command_BotReplayTest);
-    PM_AddChatAlias(".replay", "sm_botreplaytest");
-    RegConsoleCmd("sm_startrecord", Command_StartRecord);
-    PM_AddChatAlias(".rec", "sm_startrecord");
-    RegConsoleCmd("sm_stoprecord", Command_StopRecord);
-    PM_AddChatAlias(".stoprec", "sm_stoprecord");
+    RegAdminCmd("sm_botreplaytest", Command_BotReplayTest, ADMFLAG_CHANGEMAP);
+    PM_AddChatAlias(".test-replay", "sm_botreplaytest");
+    RegAdminCmd("sm_startrecord", Command_StartRecord, ADMFLAG_CHANGEMAP);
+    PM_AddChatAlias(".test-rec", "sm_startrecord");
+    RegAdminCmd("sm_stoprecord", Command_StopRecord, ADMFLAG_CHANGEMAP);
+    PM_AddChatAlias(".test-stoprec", "sm_stoprecord");
   }
 
   {
