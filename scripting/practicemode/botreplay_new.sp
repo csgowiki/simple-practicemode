@@ -1,4 +1,5 @@
 public Action Command_BotReplayTest(int client, int args) {
+    ChangeSettingById("blockroundendings", true);
     ServerCommand("bot_quota_mode normal");
     ServerCommand("bot_add");
 
@@ -24,7 +25,7 @@ public Action Command_StopRecord(int client, int args) {
 	if(!IsValidClient(client)) {
 		return Plugin_Handled;
     }
-	if(!BotMimic_IsPlayerRecording(client)) {
+	if(!BotMimic_IsPlayerMimicing(client)) {
         PM_Message(client, "{LIGHT_RED}你开没有开始录像{NORMAL}");
 		return Plugin_Handled;
 	}
@@ -38,7 +39,7 @@ public Action BotReplayTestTimer(Handle timer, int client) {
     for (int i = MaxClients; i >= 0; i--) {
         if (IsValidClient(i) && !IsClientSourceTV(i)) {
             bot = i;
-            // break;
+            break;
         }
     }
     PM_MessageToAll("bot: %d", bot);
@@ -54,7 +55,7 @@ public Action BotReplayTestTimer(Handle timer, int client) {
     CS_RespawnPlayer(bot);
     DataPack pack = new DataPack();
     pack.WriteCell(bot);
-    pack.WriteString("addons/sourcemod/data/botmimic/new/de_inferno/1628656577.rec");
+    pack.WriteString("addons/sourcemod/data/botmimic/new/de_inferno/1628658441.rec");
 
     RequestFrame(StartReplayTest, pack);
 
@@ -68,10 +69,10 @@ public void StartReplayTest(DataPack pack) {
     char filepath[128];
     pack.ReadString(filepath, sizeof(filepath));
 
-    bool g_BotReplayChickenMode = false;
+    bool g_BotReplayChickenMode = true;
     if (g_BotReplayChickenMode) {
         SetEntityModel(client, CHICKEN_MODEL);
-        SetEntPropFloat(client, Prop_Send, "m_flModelScale", 10.0);
+        SetEntPropFloat(client, Prop_Send, "m_flModelScale", 1.0);
     }
 
     BMError err = BotMimic_PlayRecordFromFile(client, filepath);
