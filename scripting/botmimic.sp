@@ -36,16 +36,16 @@
 #define ADDITIONAL_FIELD_TELEPORTED_ANGLES (1<<1)
 #define ADDITIONAL_FIELD_TELEPORTED_VELOCITY (1<<2)
 
-enum FrameInfo {
-	playerButtons = 0,
-	playerImpulse,
-	Float:actualVelocity[3],
-	Float:predictedVelocity[3],
-	Float:predictedAngles[2], // Ignore roll
-	CSWeaponID:newWeapon,
-	playerSubtype,
-	playerSeed,
-	additionalFields // see ADDITIONAL_FIELD_* defines
+enum struct FrameInfo {
+	int playerButtons;
+	int playerImpulse;
+	float actualVelocity[3];
+	float predictedVelocity[3];
+	float predictedAngles[2]; // Ignore roll
+	CSWeaponID newWeapon;
+	int playerSubtype;
+	int playerSeed;
+	int additionalFields; // see ADDITIONAL_FIELD_* defines
 }
 
 #define AT_ORIGIN 0
@@ -347,18 +347,18 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 	if(g_hRecording[client] == null || g_bRecordingPaused[client])
 		return;
 
-	int iFrame[FrameInfo];
-	iFrame[playerButtons] = buttons;
-	iFrame[playerImpulse] = impulse;
+	FrameInfo iFrame;
+	iFrame.playerButtons = buttons;
+	iFrame.playerImpulse = impulse;
 	
 	float vVel[3];
 	Entity_GetAbsVelocity(client, vVel);
-	iFrame[actualVelocity] = vVel;
-	iFrame[predictedVelocity] = vel;
-	Array_Copy(angles, iFrame[predictedAngles], 2);
-	iFrame[newWeapon] = CSWeapon_NONE;
-	iFrame[playerSubtype] = subtype;
-	iFrame[playerSeed] = seed;
+	iFrame.actualVelocity = vVel;
+	iFrame.predictedVelocity = vel;
+	Array_Copy(angles, iFrame.predictedAngles, 2);
+	iFrame.newWeapon = CSWeapon_NONE;
+	iFrame.playerSubtype = subtype;
+	iFrame.playerSeed = seed;
 	
 	// Save the origin, angles and velocity in this frame.
 	if(g_bSaveFullSnapshot[client])
@@ -400,7 +400,7 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 		int iAT[AdditionalTeleport];
 		g_hRecordingAdditionalTeleport[client].GetArray(g_iCurrentAdditionalTeleportIndex[client], iAT[0], view_as<int>(AdditionalTeleport));
 		// Remember, we were teleported this frame!
-		iFrame[additionalFields] |= iAT[atFlags];
+		iFrame.additionalFields |= iAT[atFlags];
 		g_iCurrentAdditionalTeleportIndex[client]++;
 	}
 	
@@ -442,11 +442,11 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 			CS_GetTranslatedWeaponAlias(sClassName, sWeaponAlias, sizeof(sWeaponAlias));
 			CSWeaponID weaponId = CS_AliasToWeaponID(sWeaponAlias);
 			
-			iFrame[newWeapon] = weaponId;
+			iFrame.newWeapon = weaponId;
 		}
 	}
 	
-	g_hRecording[client].PushArray(iFrame[0], view_as<int>(FrameInfo));
+	g_hRecording[client].PushArray(iFrame, sizeof(FrameInfo));
 	
 	g_iRecordedTicks[client]++;
 }
@@ -467,22 +467,22 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 		g_iCurrentAdditionalTeleportIndex[client] = 0;
 	}
 	
-	int iFrame[FrameInfo];
-	g_hBotMimicsRecord[client].GetArray(g_iBotMimicTick[client], iFrame[0], view_as<int>(FrameInfo));
+	FrameInfo iFrame;
+	g_hBotMimicsRecord[client].GetArray(g_iBotMimicTick[client], iFrame, sizeof(FrameInfo));
 	
-	buttons = iFrame[playerButtons];
-	impulse = iFrame[playerImpulse];
-	Array_Copy(iFrame[predictedVelocity], vel, 3);
-	Array_Copy(iFrame[predictedAngles], angles, 2);
-	subtype = iFrame[playerSubtype];
-	seed = iFrame[playerSeed];
+	buttons = iFrame.playerButtons;
+	impulse = iFrame.playerImpulse;
+	Array_Copy(iFrame.predictedVelocity, vel, 3);
+	Array_Copy(iFrame.predictedAngles, angles, 2);
+	subtype = iFrame.playerSubtype;
+	seed = iFrame.playerSeed;
 	weapon = 0;
 	
 	float fActualVelocity[3];
-	Array_Copy(iFrame[actualVelocity], fActualVelocity, 3);
+	Array_Copy(iFrame.actualVelocity, fActualVelocity, 3);
 	
 	// We're supposed to teleport stuff?
-	if(iFrame[additionalFields] & (ADDITIONAL_FIELD_TELEPORTED_ORIGIN|ADDITIONAL_FIELD_TELEPORTED_ANGLES|ADDITIONAL_FIELD_TELEPORTED_VELOCITY))
+	if(iFrame.additionalFields & (ADDITIONAL_FIELD_TELEPORTED_ORIGIN|ADDITIONAL_FIELD_TELEPORTED_ANGLES|ADDITIONAL_FIELD_TELEPORTED_VELOCITY))
 	{
 		int iAT[AdditionalTeleport];
 		ArrayList hAdditionalTeleport;
@@ -554,10 +554,10 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 		TeleportEntity(client, NULL_VECTOR, angles, fActualVelocity);
 	}
 	
-	if(iFrame[newWeapon] != CSWeapon_NONE)
+	if(iFrame.newWeapon != CSWeapon_NONE)
 	{
 		char sAlias[64];
-		CS_WeaponIDToAlias(iFrame[newWeapon], sAlias, sizeof(sAlias));
+		CS_WeaponIDToAlias(iFrame.newWeapon, sAlias, sizeof(sAlias));
 		
 		Format(sAlias, sizeof(sAlias), "weapon_%s", sAlias);
 		
@@ -774,7 +774,7 @@ public int StartRecording(Handle plugin, int numParams)
 		return;
 	}
 	
-	g_hRecording[client] = new ArrayList(view_as<int>(FrameInfo));
+	g_hRecording[client] = new ArrayList(sizeof(FrameInfo));
 	g_hRecordingAdditionalTeleport[client] = new ArrayList(view_as<int>(AdditionalTeleport));
 	g_hRecordingBookmarks[client] = new ArrayList(view_as<int>(Bookmarks));
 	GetClientAbsOrigin(client, g_fInitialPosition[client]);
@@ -1073,10 +1073,10 @@ public int SaveBookmark(Handle plugin, int numParams)
 	
 	iAT[atFlags] = ADDITIONAL_FIELD_TELEPORTED_ORIGIN|ADDITIONAL_FIELD_TELEPORTED_ANGLES|ADDITIONAL_FIELD_TELEPORTED_VELOCITY;
 	
-	int iFrame[FrameInfo];
-	g_hRecording[client].GetArray(g_iRecordedTicks[client]-1, iFrame[0], view_as<int>(FrameInfo));
+	FrameInfo iFrame;
+	g_hRecording[client].GetArray(g_iRecordedTicks[client]-1, iFrame, sizeof(FrameInfo));
 	// There already is some Teleport call saved this frame :(
-	if((iFrame[additionalFields] & iAT[atFlags]) != 0)
+	if((iFrame.additionalFields & iAT[atFlags]) != 0)
 	{
 		// Purge it and replace it with this one as we might have more information.
 		g_hRecordingAdditionalTeleport[client].SetArray(g_iCurrentAdditionalTeleportIndex[client]-1, iAT[0], view_as<int>(AdditionalTeleport));
@@ -1087,10 +1087,10 @@ public int SaveBookmark(Handle plugin, int numParams)
 		g_iCurrentAdditionalTeleportIndex[client]++;
 	}
 	// Remember, we were teleported this frame!
-	iFrame[additionalFields] |= iAT[atFlags];
+	iFrame.additionalFields |= iAT[atFlags];
 	
 	int iWeapon = Client_GetActiveWeapon(client);
-	if(iWeapon != INVALID_ENT_REFERENCE && iFrame[newWeapon] == CSWeapon_NONE && IsValidEntity(iWeapon))
+	if(iWeapon != INVALID_ENT_REFERENCE && iFrame.newWeapon == CSWeapon_NONE && IsValidEntity(iWeapon))
 	{
 		char sClassName[64];
 		GetEntityClassname(iWeapon, sClassName, sizeof(sClassName));
@@ -1099,10 +1099,10 @@ public int SaveBookmark(Handle plugin, int numParams)
 		char sWeaponAlias[64];
 		CS_GetTranslatedWeaponAlias(sClassName, sWeaponAlias, sizeof(sWeaponAlias));
 		CSWeaponID weaponId = CS_AliasToWeaponID(sWeaponAlias);
-		iFrame[newWeapon] = weaponId;
+		iFrame.newWeapon = weaponId;
 	}
 	
-	g_hRecording[client].SetArray(g_iRecordedTicks[client]-1, iFrame[0], view_as<int>(FrameInfo));
+	g_hRecording[client].SetArray(g_iRecordedTicks[client]-1, iFrame, sizeof(FrameInfo));
 	
 	// Save the bookmark
 	iBookmark[BKM_frame] = g_iRecordedTicks[client]-1;
@@ -1643,22 +1643,22 @@ void WriteRecordToDisk(const char[] sPath, int iFileHeader[FileHeader])
 		hFile.WriteString(iBookmark[BKM_name], true);
 	}
 	
-	int iFrame[FrameInfo];
+	FrameInfo iFrame;
 	for(int i=0;i<iTickCount;i++)
 	{
-		iFileHeader[FH_frames].GetArray(i, iFrame[0], view_as<int>(FrameInfo));
-		hFile.Write(iFrame[0], view_as<int>(FrameInfo), 4);
+		iFileHeader[FH_frames].GetArray(i, iFrame, sizeof(FrameInfo));
+		hFile.Write(iFrame, sizeof(FrameInfo), 4);
 		
 		// Handle the optional Teleport call
-		if(hAdditionalTeleport != null && iFrame[additionalFields] & (ADDITIONAL_FIELD_TELEPORTED_ORIGIN|ADDITIONAL_FIELD_TELEPORTED_ANGLES|ADDITIONAL_FIELD_TELEPORTED_VELOCITY))
+		if(hAdditionalTeleport != null && iFrame.additionalFields & (ADDITIONAL_FIELD_TELEPORTED_ORIGIN|ADDITIONAL_FIELD_TELEPORTED_ANGLES|ADDITIONAL_FIELD_TELEPORTED_VELOCITY))
 		{
 			int iAT[AdditionalTeleport];
 			hAdditionalTeleport.GetArray(iATIndex, iAT[0], view_as<int>(AdditionalTeleport));
-			if(iFrame[additionalFields] & ADDITIONAL_FIELD_TELEPORTED_ORIGIN)
+			if(iFrame.additionalFields & ADDITIONAL_FIELD_TELEPORTED_ORIGIN)
 				hFile.Write(view_as<int>(iAT[atOrigin]), 3, 4);
-			if(iFrame[additionalFields] & ADDITIONAL_FIELD_TELEPORTED_ANGLES)
+			if(iFrame.additionalFields & ADDITIONAL_FIELD_TELEPORTED_ANGLES)
 				hFile.Write(view_as<int>(iAT[atAngles]), 3, 4);
-			if(iFrame[additionalFields] & ADDITIONAL_FIELD_TELEPORTED_VELOCITY)
+			if(iFrame.additionalFields & ADDITIONAL_FIELD_TELEPORTED_VELOCITY)
 				hFile.Write(view_as<int>(iAT[atVelocity]), 3, 4);
 			iATIndex++;
 		}
@@ -1782,25 +1782,25 @@ BMError LoadRecordFromFile(const char[] path, const char[] sCategory, int header
 	}
 	
 	// Read in all the saved frames
-	ArrayList hRecordFrames = new ArrayList(view_as<int>(FrameInfo));
+	ArrayList hRecordFrames = new ArrayList(sizeof(FrameInfo));
 	ArrayList hAdditionalTeleport = new ArrayList(view_as<int>(AdditionalTeleport));
 	
-	int iFrame[FrameInfo];
+	FrameInfo iFrame;
 	for(int i=0;i<iTickCount;i++)
 	{
-		hFile.Read(iFrame[0], view_as<int>(FrameInfo), 4);
-		hRecordFrames.PushArray(iFrame[0], view_as<int>(FrameInfo));
+		hFile.Read(iFrame, sizeof(FrameInfo), 4);
+		hRecordFrames.PushArray(iFrame, sizeof(FrameInfo));
 		
-		if(iFrame[additionalFields] & (ADDITIONAL_FIELD_TELEPORTED_ORIGIN|ADDITIONAL_FIELD_TELEPORTED_ANGLES|ADDITIONAL_FIELD_TELEPORTED_VELOCITY))
+		if(iFrame.additionalFields & (ADDITIONAL_FIELD_TELEPORTED_ORIGIN|ADDITIONAL_FIELD_TELEPORTED_ANGLES|ADDITIONAL_FIELD_TELEPORTED_VELOCITY))
 		{
 			int iAT[AdditionalTeleport];
-			if(iFrame[additionalFields] & ADDITIONAL_FIELD_TELEPORTED_ORIGIN)
+			if(iFrame.additionalFields & ADDITIONAL_FIELD_TELEPORTED_ORIGIN)
 				hFile.Read(view_as<int>(iAT[atOrigin]), 3, 4);
-			if(iFrame[additionalFields] & ADDITIONAL_FIELD_TELEPORTED_ANGLES)
+			if(iFrame.additionalFields & ADDITIONAL_FIELD_TELEPORTED_ANGLES)
 				hFile.Read(view_as<int>(iAT[atAngles]), 3, 4);
-			if(iFrame[additionalFields] & ADDITIONAL_FIELD_TELEPORTED_VELOCITY)
+			if(iFrame.additionalFields & ADDITIONAL_FIELD_TELEPORTED_VELOCITY)
 				hFile.Read(view_as<int>(iAT[atVelocity]), 3, 4);
-			iAT[atFlags] = iFrame[additionalFields] & (ADDITIONAL_FIELD_TELEPORTED_ORIGIN|ADDITIONAL_FIELD_TELEPORTED_ANGLES|ADDITIONAL_FIELD_TELEPORTED_VELOCITY);
+			iAT[atFlags] = iFrame.additionalFields & (ADDITIONAL_FIELD_TELEPORTED_ORIGIN|ADDITIONAL_FIELD_TELEPORTED_ANGLES|ADDITIONAL_FIELD_TELEPORTED_VELOCITY);
 			hAdditionalTeleport.PushArray(iAT[0], view_as<int>(AdditionalTeleport));
 		}
 	}
