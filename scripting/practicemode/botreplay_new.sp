@@ -37,12 +37,11 @@ public Action Command_StopRecord(int client, int args) {
 public Action BotReplayTestTimer(Handle timer, int client) {
     int bot = -1;
     for (int i = MaxClients; i >= 0; i--) {
-        if (IsValidClient(i) && !IsClientSourceTV(i)) {
+        if (IsValidClient(i) && IsFakeClient(i) && !IsClientSourceTV(i)) {
             bot = i;
             break;
         }
     }
-    PM_MessageToAll("bot: %d", bot);
     if (bot == -1) {
         return Plugin_Handled;
     }
@@ -55,7 +54,7 @@ public Action BotReplayTestTimer(Handle timer, int client) {
     CS_RespawnPlayer(bot);
     DataPack pack = new DataPack();
     pack.WriteCell(bot);
-    pack.WriteString("addons/sourcemod/data/botmimic/new/de_inferno/1628658441.rec");
+    pack.WriteString("addons/sourcemod/data/botmimic/new/de_inferno/1628685242.rec");
 
     RequestFrame(StartReplayTest, pack);
 
@@ -69,7 +68,7 @@ public void StartReplayTest(DataPack pack) {
     char filepath[128];
     pack.ReadString(filepath, sizeof(filepath));
 
-    bool g_BotReplayChickenMode = true;
+    bool g_BotReplayChickenMode = false;
     if (g_BotReplayChickenMode) {
         SetEntityModel(client, CHICKEN_MODEL);
         SetEntPropFloat(client, Prop_Send, "m_flModelScale", 1.0);
