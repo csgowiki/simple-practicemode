@@ -205,14 +205,6 @@ public Action Command_FinishRecording(int client, int args) {
   return Plugin_Handled;
 }
 
-public Action Command_LookAtWeapon(int client, const char[] command, int argc) {
-  if (g_InBotReplayMode) {
-    // TODO: also hook the noclip command as a way to finish recording.
-    FinishRecording(client, false);
-  }
-  return Plugin_Continue;
-}
-
 public Action Command_Cancel(int client, int args) {
   int numReplaying = 0;
   for (int i = 0; i < MAX_REPLAY_CLIENTS; i++) {
