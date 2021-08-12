@@ -11,15 +11,6 @@ public bool IsGrenadeProjectile(const char[] className) {
   return FindStringInArray2(projectileTypes, sizeof(projectileTypes), className) >= 0;
 }
 
-public bool IsGrenadeWeapon(const char[] weapon) {
-  static char grenades[][] = {
-      "weapon_incgrenade", "weapon_molotov",   "weapon_hegrenade",
-      "weapon_decoy",      "weapon_flashbang", "weapon_smokegrenade",
-  };
-
-  return FindStringInArray2(grenades, sizeof(grenades), weapon) >= 0;
-}
-
 stock void TeleportToGrenadeHistoryPosition(int client, int index,
                                             MoveType moveType = MOVETYPE_WALK) {
   float origin[3];

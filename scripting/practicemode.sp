@@ -61,6 +61,7 @@ ConVar g_PatchGrenadeTrajectoryCvar;
 ConVar g_GrenadeTrajectoryClientColorCvar;
 ConVar g_RandomGrenadeTrajectoryCvar;
 
+ConVar g_AllowNoclipCvar;
 ConVar g_GrenadeTrajectoryCvar;
 ConVar g_GrenadeThicknessCvar;
 ConVar g_GrenadeTimeCvar;
@@ -111,11 +112,7 @@ bool g_BotCrouching[MAXPLAYERS + 1];
 int g_BotNameNumber[MAXPLAYERS + 1];
 float g_BotDeathTime[MAXPLAYERS + 1];
 
-bool g_BotInit = false;
-bool g_InBotReplayMode = false;
 bool g_InDryRun = false;
-
-KeyValues g_ReplaysKv;
 
 #define PLAYER_HEIGHT 72.0
 #define CROUCH_PLAYER_HEIGHT (PLAYER_HEIGHT - 18.0)
@@ -131,6 +128,8 @@ enum ClientColor {
   ClientColor_Blue = 3,
   ClientColor_Orange = 4,
 };
+
+int g_LastNoclipCommand[MAXPLAYERS + 1];
 
 // Timer data. Supports 3 modes:
 enum TimerType {
@@ -182,10 +181,7 @@ Handle g_OnPracticeModeSettingsRead = INVALID_HANDLE;
 
 #define CHICKEN_MODEL "models/chicken/chicken.mdl"
 
-#include "practicemode/botreplay.sp"
-#include "practicemode/botreplay_data.sp"
-#include "practicemode/botreplay_editor.sp"
-#include "practicemode/botreplay_utils.sp"
+#include "practicemode/botreplay_new.sp"
 
 #include "practicemode/backups.sp"
 #include "practicemode/bots.sp"
@@ -240,6 +236,16 @@ public void OnPluginStart() {
     g_ClientGrenadeThrowTimes[i] = new ArrayList(2);
     g_ClientBots[i] = new ArrayList();
     g_OnCountDownRec[i] = false;
+  }
+
+  // for test
+  {
+    RegAdminCmd("sm_botreplaytest", Command_BotReplayTest, ADMFLAG_CHANGEMAP);
+    PM_AddChatAlias(".test-replay", "sm_botreplaytest");
+    RegAdminCmd("sm_startrecord", Command_StartRecord, ADMFLAG_CHANGEMAP);
+    PM_AddChatAlias(".test-rec", "sm_startrecord");
+    RegAdminCmd("sm_stoprecord", Command_StopRecord, ADMFLAG_CHANGEMAP);
+    PM_AddChatAlias(".test-stoprec", "sm_stoprecord");
   }
 
   {
@@ -344,31 +350,6 @@ public void OnPluginStart() {
 
     RegConsoleCmd("sm_botsmenu", Command_BotsMenu);
     PM_AddChatAlias(".bots", "sm_botsmenu");
-  }
-
-  // Bot replay commands
-  {
-    AddCommandListener(Command_LookAtWeapon, "+lookatweapon");
-
-    RegConsoleCmd("sm_replay", Command_Replay);
-    RegConsoleCmd("sm_replays", Command_Replays);
-    PM_AddChatAlias(".replay", "sm_replay");
-    PM_AddChatAlias(".replays", "sm_replays");
-
-    RegConsoleCmd("sm_namereplay", Command_NameReplay);
-    PM_AddChatAlias(".namereplay", "sm_namereplay");
-
-    RegConsoleCmd("sm_namerole", Command_NameRole);
-    PM_AddChatAlias(".namerole", "sm_namerole");
-
-    RegConsoleCmd("sm_cancel", Command_Cancel);
-    PM_AddChatAlias(".cancel", "sm_cancel");
-
-    RegConsoleCmd("sm_finishrecording", Command_FinishRecording);
-    PM_AddChatAlias(".finish", "sm_finishrecording");
-
-    RegConsoleCmd("sm_playrecording", Command_PlayRecording);
-    PM_AddChatAlias(".play", "sm_playrecording");
   }
 
   // Saved grenade location commands
@@ -490,8 +471,12 @@ public void OnPluginStart() {
   AutoExecConfig(true, "practicemode");
 
   // New cvars we don't want saved in the autoexec'd file
-  g_InfiniteMoneyCvar = CreateConVar("sm_infinite_money", "0",
-                                     "Whether clients recieve infinite money", FCVAR_DONTRECORD);
+  g_AllowNoclipCvar = 
+      CreateConVar("sm_allow_noclip", "0",
+                  "Whether players may use .noclip in chat to toggle noclip", FCVAR_DONTRECORD);
+  g_InfiniteMoneyCvar = 
+      CreateConVar("sm_infinite_money", "0",
+                  "Whether clients recieve infinite money", FCVAR_DONTRECORD);
   g_PatchGrenadeTrajectoryCvar =
       CreateConVar("sm_patch_grenade_trajectory_cvar", "1",
                    "Whether the plugin patches sv_grenade_trajectory with its own grenade trails");
@@ -532,7 +517,6 @@ public void OnPluginStart() {
   HookEvent("server_cvar", Event_CvarChanged, EventHookMode_Pre);
   HookEvent("player_spawn", Event_PlayerSpawn);
   HookEvent("player_hurt", Event_BotDamageDealtEvent, EventHookMode_Pre);
-  HookEvent("player_hurt", Event_ReplayBotDamageDealtEvent, EventHookMode_Pre);
   HookEvent("player_death", Event_PlayerDeath);
   HookEvent("round_freeze_end", Event_FreezeEnd);
 
@@ -540,7 +524,6 @@ public void OnPluginStart() {
 
   CreateTimer(1.0, Timer_GivePlayersMoney, _, TIMER_REPEAT);
   CreateTimer(0.1, Timer_RespawnBots, _, TIMER_REPEAT);
-  CreateTimer(1.0, Timer_CleanupLivingBots, _, TIMER_REPEAT);
   CreateTimer(1.0, Timer_UpdateClientCvars, _, TIMER_REPEAT);
 }
 
@@ -573,12 +556,6 @@ public Action Event_PlayerSpawn(Event event, const char[] name, bool dontBroadca
   }
   if (IsPMBot(client)) {
     GiveBotParams(client);
-  }
-
-  // TODO: move this elsewhere and save it properly.
-  if (g_InBotReplayMode && g_BotMimicLoaded && IsReplayBot(client)) {
-    Client_SetArmor(client, 100);
-    SetEntData(client, FindSendPropInfo("CCSPlayer", "m_bHasHelmet"), true);
   }
 
   return Plugin_Continue;
@@ -617,7 +594,6 @@ public void OnMapStart() {
   GetCleanMapName(map, sizeof(map));
 
   Spawns_MapStart();
-  BotReplay_MapStart();
 }
 
 public void OnConfigsExecuted() {
@@ -643,7 +619,6 @@ public void OnClientDisconnect(int client) {
 public void OnMapEnd() {
   ClearBots();
   Spawns_MapEnd();
-  BotReplay_MapEnd();
 }
 
 public void ClearBots() {
@@ -777,7 +752,7 @@ public Action Command_TeamJoin(int client, const char[] command, int argc) {
   SwitchPlayerTeam(client, team);
 
   // Since we force respawns off during bot replay, make teamswitches respawn players.
-  if (g_InBotReplayMode && team != CS_TEAM_SPECTATOR && team != CS_TEAM_NONE) {
+  if (team != CS_TEAM_SPECTATOR && team != CS_TEAM_NONE) {
     CS_RespawnPlayer(client);
   }
 
@@ -789,6 +764,33 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
   if (IsPlayer(client) && g_OnCountDownRec[client] && StrEqual(command, "say")) {
     ClientCommand(client, "sm_countdown %s", text);
     g_OnCountDownRec[client] = false;
+  }
+  if (g_AllowNoclipCvar.IntValue != 0 && StrEqual(text, ".noclip") && IsPlayer(client)) {
+    PerformNoclipAction(client);
+  }
+}
+
+public void PerformNoclipAction(int client) {
+  // The move type is also set on the next frame. This is a dirty trick to deal
+  // with clients that have a double-bind of "noclip; say .noclip" to work on both
+  // ESEA-practice and local sv_cheats servers. Since this plugin can have both enabled
+  // (sv_cheats and allow noclip), this double bind would cause the noclip type to be toggled twice.
+  // Therefore the fix is to only perform 1 noclip action per-frame per-client at most, implemented
+  // by saving the frame count of each use in g_LastNoclipCommand.
+  if (g_LastNoclipCommand[client] == GetGameTickCount() ||
+      (g_AllowNoclipCvar.IntValue == 0 && GetCvarIntSafe("sv_cheats") == 0)) {
+    return;
+  }
+
+  g_LastNoclipCommand[client] = GetGameTickCount();
+  MoveType t = GetEntityMoveType(client);
+  MoveType next = (t == MOVETYPE_WALK) ? MOVETYPE_NOCLIP : MOVETYPE_WALK;
+  SetEntityMoveType(client, next);
+
+  if (next == MOVETYPE_WALK) {
+    SetEntProp(client, Prop_Data, "m_CollisionGroup", 5);
+  } else {
+    SetEntProp(client, Prop_Data, "m_CollisionGroup", 0);
   }
 }
 
@@ -1198,6 +1200,5 @@ public void CSU_OnThrowGrenade(int client, int entity, GrenadeType grenadeType, 
     g_LastGrenadeType[client] = grenadeType;
     g_LastGrenadeOrigin[client] = origin;
     g_LastGrenadeVelocity[client] = velocity;
-    Replays_OnThrowGrenade(client, entity, grenadeType, origin, velocity);
   }
 }

@@ -166,9 +166,6 @@ public Action Command_StopAll(int client, int args) {
   if (g_RunningRepeatedCommand[client]) {
     Command_StopRepeat(client, 0);
   }
-  if (g_BotMimicLoaded && IsReplayPlaying()) {
-    CancelAllReplays();
-  }
   if (g_BotMimicLoaded && BotMimic_IsPlayerRecording(client)) {
     BotMimic_StopRecording(client, false /* save */);
   }
@@ -368,10 +365,10 @@ void DryRunSetting(int client, bool status, int mp_freezetime) {
   ChangeSettingById("showimpacts", status);
 
   for (int i = 1; i <= MaxClients; i++) {
-    g_TestingFlash[i] = status;
-    g_RunningRepeatedCommand[i] = status;
+    g_TestingFlash[i] = false;
+    g_RunningRepeatedCommand[i] = false;
     g_SavedRespawnActive[i] = false;
-    g_ClientNoFlash[client] = status;
+    g_ClientNoFlash[client] = false;
     if (IsPlayer(i) && !status) {
       SetEntityMoveType(i, MOVETYPE_WALK);
     }
