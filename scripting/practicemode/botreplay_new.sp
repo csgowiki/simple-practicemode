@@ -54,7 +54,7 @@ public Action BotReplayTestTimer(Handle timer, int client) {
     CS_RespawnPlayer(bot);
     DataPack pack = new DataPack();
     pack.WriteCell(bot);
-    pack.WriteString("addons/sourcemod/data/botmimic/new/de_inferno/hello.rec");
+    pack.WriteString("addons/sourcemod/data/botmimic/new/demo.rec");
 
     RequestFrame(StartReplayTest, pack);
 

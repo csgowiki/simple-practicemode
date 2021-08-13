@@ -356,6 +356,7 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 	Entity_GetAbsVelocity(client, vVel);
 	iFrame.actualVelocity = vVel;
 	iFrame.predictedVelocity = vel;
+
 	Array_Copy(angles, iFrame.predictedAngles, 2);
 	iFrame.newWeapon = CSWeapon_NONE;
 	iFrame.playerSubtype = subtype;
@@ -658,24 +659,25 @@ public void Event_OnPlayerDeath(Event event, const char[] name, bool dontBroadca
 		g_iBotMimicTick[client] = 0;
 		g_iCurrentAdditionalTeleportIndex[client] = 0;
 		if(g_hCVRespawnOnDeath.BoolValue && GetClientTeam(client) >= CS_TEAM_T)
-			CreateTimer(1.0, Timer_DelayedRespawn, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+			BotMimic_StopPlayerMimic(client);
+			// CreateTimer(1.0, Timer_DelayedRespawn, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 	}
 }
 
 /**
  * Timer Callbacks
  */
-public Action Timer_DelayedRespawn(Handle timer, any userid)
-{
-	int client = GetClientOfUserId(userid);
-	if(!client)
-		return Plugin_Stop;
+// public Action Timer_DelayedRespawn(Handle timer, any userid)
+// {
+// 	int client = GetClientOfUserId(userid);
+// 	if(!client)
+// 		return Plugin_Stop;
 	
-	if(g_hBotMimicsRecord[client] != null && IsClientInGame(client) && !IsPlayerAlive(client) && IsFakeClient(client) && GetClientTeam(client) >= CS_TEAM_T)
-		CS_RespawnPlayer(client);
+// 	if(g_hBotMimicsRecord[client] != null && IsClientInGame(client) && !IsPlayerAlive(client) && IsFakeClient(client) && GetClientTeam(client) >= CS_TEAM_T)
+// 		CS_RespawnPlayer(client);
 	
-	return Plugin_Stop;
-}
+// 	return Plugin_Stop;
+// }
 
 
 /**
@@ -960,7 +962,14 @@ public int StopRecording(Handle plugin, int numParams)
 				return;
 		}
 		
-		Format(sPath, sizeof(sPath), "%s/%d.rec", sPath, iEndTime);
+		char filename[16];
+		GetNativeString(3, filename, sizeof(filename));
+		if (strlen(filename)) {
+			Format(sPath, sizeof(sPath), "%s/%s.rec", sPath, filename);
+		}
+		else {
+			Format(sPath, sizeof(sPath), "%s/%d.rec", sPath, iEndTime);
+		}
 		
 		// Add to our loaded record list
 		FileHeader iHeader;

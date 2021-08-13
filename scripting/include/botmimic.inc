@@ -68,8 +68,9 @@ native bool BotMimic_IsRecordingPaused(int client);
  * 
  * @param client	The client which was recording
  * @param save		Save the record (true) or discard (false)
+ * @param filename  The filename saving(without .rec), timestamp for default
  */
-native void BotMimic_StopRecording(int client, bool save = true);
+native void BotMimic_StopRecording(int client, bool save = true, const char[] filename="");
 
 /**
  * Save the current frame with the given name as bookmark.

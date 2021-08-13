@@ -240,7 +240,7 @@ public void OnPluginStart() {
 
   // for test
   {
-    RegAdminCmd("sm_botreplaytest", Command_BotReplayTest, ADMFLAG_CHANGEMAP);
+    RegAdminCmd("sm_botreplay", Command_BotReplayTest, ADMFLAG_CHANGEMAP);
     PM_AddChatAlias(".test-replay", "sm_botreplaytest");
     RegAdminCmd("sm_startrecord", Command_StartRecord, ADMFLAG_CHANGEMAP);
     PM_AddChatAlias(".test-rec", "sm_startrecord");
