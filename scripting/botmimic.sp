@@ -118,6 +118,7 @@ ArrayList g_hBotMimicsRecord[MAXPLAYERS+1] = {null,...};
 int g_iBotMimicTick[MAXPLAYERS+1] = {0,...};
 int g_iBotMimicRecordTickCount[MAXPLAYERS+1] = {0,...};
 int g_iBotActiveWeapon[MAXPLAYERS+1] = {-1,...};
+char g_BotActiveWeaponName[MAXPLAYERS+1][32];
 bool g_bBotSwitchedWeapon[MAXPLAYERS+1];
 bool g_bValidTeleportCall[MAXPLAYERS+1];
 BookmarkWhileMimicing g_iBotMimicNextBookmarkTick[MAXPLAYERS+1];
@@ -443,7 +444,7 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 			char sWeaponAlias[64];
 			CS_GetTranslatedWeaponAlias(sClassName, sWeaponAlias, sizeof(sWeaponAlias));
 			CSWeaponID weaponId = CS_AliasToWeaponID(sWeaponAlias);
-			
+			PrintToChat(client, "weapon alias: %s", sWeaponAlias);
 			iFrame.newWeapon = weaponId;
 		}
 	}
@@ -467,6 +468,8 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 	{
 		g_iBotMimicTick[client] = 0;
 		g_iCurrentAdditionalTeleportIndex[client] = 0;
+		BotMimic_StopPlayerMimic(client); // for once
+		return Plugin_Continue;
 	}
 	
 	FrameInfo iFrame;
@@ -562,7 +565,9 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 		CS_WeaponIDToAlias(iFrame.newWeapon, sAlias, sizeof(sAlias));
 		
 		Format(sAlias, sizeof(sAlias), "weapon_%s", sAlias);
-		
+		strcopy(g_BotActiveWeaponName[client], sizeof(g_BotActiveWeaponName), sAlias);
+		PrintToChat(client, "new weapon: %s", sAlias);
+
 		if(g_iBotMimicTick[client] > 0 && Client_HasWeapon(client, sAlias))
 		{
 			weapon = Client_GetWeapon(client, sAlias);
@@ -587,14 +592,22 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 					EquipPlayerWeapon(client, weapon);
 				}
 			}
+			// g_bBotSwitchedWeapon[client] = true;
+			// char weaponCmd[32];
+			// Format(weaponCmd, sizeof(weaponCmd), "give %s", sAlias);
+			// ClientCommand(client, weaponCmd);
 		}
 	}
 	// Switch the weapon on the next frame after it was selected.
 	else if (g_bBotSwitchedWeapon[client])
 	{
+		char weaponCmd[32];
 		g_bBotSwitchedWeapon[client] = false;
-		SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", g_iBotActiveWeapon[client]);
-		Client_SetActiveWeapon(client, g_iBotActiveWeapon[client]);
+		SetEntProp(client, Prop_Send, "m_iAmmo", 30);
+		Format(weaponCmd, sizeof(weaponCmd), "use %s", g_BotActiveWeaponName[client]);
+		ClientCommand(client, weaponCmd);
+		// SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", g_iBotActiveWeapon[client]);
+		// Client_SetActiveWeapon(client, g_iBotActiveWeapon[client]);
 	}
 	
 	// See if there's a bookmark on this tick

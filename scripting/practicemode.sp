@@ -241,11 +241,11 @@ public void OnPluginStart() {
   // for test
   {
     RegAdminCmd("sm_botreplay", Command_BotReplayTest, ADMFLAG_CHANGEMAP);
-    PM_AddChatAlias(".test-replay", "sm_botreplaytest");
+    PM_AddChatAlias(".treplay", "sm_botreplay");
     RegAdminCmd("sm_startrecord", Command_StartRecord, ADMFLAG_CHANGEMAP);
-    PM_AddChatAlias(".test-rec", "sm_startrecord");
+    PM_AddChatAlias(".trec", "sm_startrecord");
     RegAdminCmd("sm_stoprecord", Command_StopRecord, ADMFLAG_CHANGEMAP);
-    PM_AddChatAlias(".test-stoprec", "sm_stoprecord");
+    PM_AddChatAlias(".tstoprec", "sm_stoprecord");
   }
 
   {
