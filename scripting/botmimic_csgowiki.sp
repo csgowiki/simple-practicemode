@@ -15,14 +15,14 @@
 #include <cstrike>
 #include <sdkhooks>
 #include <smlib>
-#include <botmimic>
+#include <botmimic_csgowiki>
 
 #undef REQUIRE_EXTENSIONS
 #include <dhooks>
 
 #pragma newdecls required
 
-#define PLUGIN_VERSION "2.1"
+#define PLUGIN_VERSION "1.0"
 
 #define BM_MAGIC 0xdeadbeef
 
@@ -118,6 +118,7 @@ ArrayList g_hBotMimicsRecord[MAXPLAYERS+1] = {null,...};
 int g_iBotMimicTick[MAXPLAYERS+1] = {0,...};
 int g_iBotMimicRecordTickCount[MAXPLAYERS+1] = {0,...};
 int g_iBotActiveWeapon[MAXPLAYERS+1] = {-1,...};
+char g_BotActiveWeaponName[MAXPLAYERS+1][32];
 bool g_bBotSwitchedWeapon[MAXPLAYERS+1];
 bool g_bValidTeleportCall[MAXPLAYERS+1];
 BookmarkWhileMimicing g_iBotMimicNextBookmarkTick[MAXPLAYERS+1];
@@ -141,16 +142,16 @@ ConVar g_hCVRespawnOnDeath;
 
 public Plugin myinfo = 
 {
-	name = "Bot Mimic",
-	author = "Jannik \"Peace-Maker\" Hartung",
+	name = "Bot Mimic-CSGOWiki",
+	author = "CarOL(based on Jannik \"Peace-Maker\" Hartung)",
 	description = "Bots mimic your movements!",
 	version = PLUGIN_VERSION,
-	url = "http://www.wcfan.de/"
+	url = "https://github.com/hx-w/simple-practicemode"
 }
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
-	RegPluginLibrary("botmimic");
+	RegPluginLibrary("botmimic_csgowiki");
 	CreateNative("BotMimic_StartRecording", StartRecording);
 	CreateNative("BotMimic_PauseRecording", PauseRecording);
 	CreateNative("BotMimic_ResumeRecording", ResumeRecording);
@@ -356,6 +357,7 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 	Entity_GetAbsVelocity(client, vVel);
 	iFrame.actualVelocity = vVel;
 	iFrame.predictedVelocity = vel;
+
 	Array_Copy(angles, iFrame.predictedAngles, 2);
 	iFrame.newWeapon = CSWeapon_NONE;
 	iFrame.playerSubtype = subtype;
@@ -416,7 +418,7 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 	else
 	{
 		int iWeapon = Client_GetActiveWeapon(client);
-		
+
 		// He's holding a weapon and
 		if(iWeapon != -1 && 
 		// we just started recording. Always save the first weapon!
@@ -442,7 +444,6 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 			char sWeaponAlias[64];
 			CS_GetTranslatedWeaponAlias(sClassName, sWeaponAlias, sizeof(sWeaponAlias));
 			CSWeaponID weaponId = CS_AliasToWeaponID(sWeaponAlias);
-			
 			iFrame.newWeapon = weaponId;
 		}
 	}
@@ -455,24 +456,32 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float
 public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3], float angles[3], int &weapon, int &subtype, int &cmdnum, int &tickcount, int &seed, int mouse[2])
 {
 	// Bot is mimicing something
-	if(g_hBotMimicsRecord[client] == null)
+	if (g_hBotMimicsRecord[client] == null)
 		return Plugin_Continue;
 
 	// Is this a valid living bot?
-	if(!IsPlayerAlive(client) || GetClientTeam(client) < CS_TEAM_T)
+	if (!IsPlayerAlive(client) || GetClientTeam(client) < CS_TEAM_T)
 		return Plugin_Continue;
 	
-	if(g_iBotMimicTick[client] >= g_iBotMimicRecordTickCount[client])
+	if (g_iBotMimicTick[client] >= g_iBotMimicRecordTickCount[client])
 	{
+		PrintCenterText(client, "<font color='#87CEFA'>回放结束");
 		g_iBotMimicTick[client] = 0;
 		g_iCurrentAdditionalTeleportIndex[client] = 0;
+		BotMimic_StopPlayerMimic(client); // for once
+		return Plugin_Continue;
 	}
+
+	float percent = 100 * float(g_iBotMimicTick[client]) / g_iBotMimicRecordTickCount[client];
+	PrintCenterText(client, "回放进度：<font color='#0CED26'>%.1f<font color='#ffffff'>\%", percent);
 	
 	FrameInfo iFrame;
 	g_hBotMimicsRecord[client].GetArray(g_iBotMimicTick[client], iFrame, sizeof(FrameInfo));
 	
-	buttons = iFrame.playerButtons;
-	impulse = iFrame.playerImpulse;
+	if (!g_bBotSwitchedWeapon[client]) {
+		buttons = iFrame.playerButtons;
+		impulse = iFrame.playerImpulse;
+	}
 	Array_Copy(iFrame.predictedVelocity, vel, 3);
 	Array_Copy(iFrame.predictedAngles, angles, 2);
 	subtype = iFrame.playerSubtype;
@@ -555,45 +564,26 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 		TeleportEntity(client, NULL_VECTOR, angles, fActualVelocity);
 	}
 	
+	if (g_bBotSwitchedWeapon[client]) {
+		FakeClientCommand(client, "use %s", g_BotActiveWeaponName[client]);
+		g_bBotSwitchedWeapon[client] = false;
+	}
+
 	if(iFrame.newWeapon != CSWeapon_NONE)
 	{
 		char sAlias[64];
 		CS_WeaponIDToAlias(iFrame.newWeapon, sAlias, sizeof(sAlias));
 		
 		Format(sAlias, sizeof(sAlias), "weapon_%s", sAlias);
-		
-		if(g_iBotMimicTick[client] > 0 && Client_HasWeapon(client, sAlias))
-		{
-			weapon = Client_GetWeapon(client, sAlias);
-			g_iBotActiveWeapon[client] = weapon;
-			g_bBotSwitchedWeapon[client] = true;
-		}
-		else
-		{
-			weapon = GivePlayerItem(client, sAlias);
-			if(weapon != INVALID_ENT_REFERENCE)
-			{
-				g_iBotActiveWeapon[client] = weapon;
-				// Switch to that new weapon on the next frame.
-				g_bBotSwitchedWeapon[client] = true;
+		strcopy(g_BotActiveWeaponName[client], sizeof(g_BotActiveWeaponName), sAlias);
 
-				// Grenades shouldn't be equipped.
-				if(StrContains(sAlias, "grenade") == -1 
-				&& StrContains(sAlias, "flashbang") == -1 
-				&& StrContains(sAlias, "decoy") == -1 
-				&& StrContains(sAlias, "molotov") == -1)
-				{
-					EquipPlayerWeapon(client, weapon);
-				}
-			}
+		g_bBotSwitchedWeapon[client] = true;
+		// CreateTimer(0.1, SwitchWeaponTimer, client);
+		if (g_iBotMimicTick[client] == 0 || !HasWeapon(client, sAlias)) {
+			char weaponCmd[32];
+			Format(weaponCmd, sizeof(weaponCmd), "give %s", sAlias);
+			FakeClientCommand(client, weaponCmd);
 		}
-	}
-	// Switch the weapon on the next frame after it was selected.
-	else if (g_bBotSwitchedWeapon[client])
-	{
-		g_bBotSwitchedWeapon[client] = false;
-		SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", g_iBotActiveWeapon[client]);
-		Client_SetActiveWeapon(client, g_iBotActiveWeapon[client]);
 	}
 	
 	// See if there's a bookmark on this tick
@@ -622,6 +612,12 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 	
 	return Plugin_Changed;
 }
+
+// public Action SwitchWeaponTimer(Handle timer, int client) {
+// 	FakeClientCommand(client, "use %s", g_BotActiveWeaponName[client]);
+// 	g_bBotSwitchedWeapon[client] = false;
+// 	return Plugin_Handled;
+// }
 
 /**
  * Event Callbacks
@@ -658,24 +654,25 @@ public void Event_OnPlayerDeath(Event event, const char[] name, bool dontBroadca
 		g_iBotMimicTick[client] = 0;
 		g_iCurrentAdditionalTeleportIndex[client] = 0;
 		if(g_hCVRespawnOnDeath.BoolValue && GetClientTeam(client) >= CS_TEAM_T)
-			CreateTimer(1.0, Timer_DelayedRespawn, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+			BotMimic_StopPlayerMimic(client);
+			// CreateTimer(1.0, Timer_DelayedRespawn, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 	}
 }
 
 /**
  * Timer Callbacks
  */
-public Action Timer_DelayedRespawn(Handle timer, any userid)
-{
-	int client = GetClientOfUserId(userid);
-	if(!client)
-		return Plugin_Stop;
+// public Action Timer_DelayedRespawn(Handle timer, any userid)
+// {
+// 	int client = GetClientOfUserId(userid);
+// 	if(!client)
+// 		return Plugin_Stop;
 	
-	if(g_hBotMimicsRecord[client] != null && IsClientInGame(client) && !IsPlayerAlive(client) && IsFakeClient(client) && GetClientTeam(client) >= CS_TEAM_T)
-		CS_RespawnPlayer(client);
+// 	if(g_hBotMimicsRecord[client] != null && IsClientInGame(client) && !IsPlayerAlive(client) && IsFakeClient(client) && GetClientTeam(client) >= CS_TEAM_T)
+// 		CS_RespawnPlayer(client);
 	
-	return Plugin_Stop;
-}
+// 	return Plugin_Stop;
+// }
 
 
 /**
@@ -960,7 +957,14 @@ public int StopRecording(Handle plugin, int numParams)
 				return;
 		}
 		
-		Format(sPath, sizeof(sPath), "%s/%d.rec", sPath, iEndTime);
+		char filename[16];
+		GetNativeString(3, filename, sizeof(filename));
+		if (strlen(filename)) {
+			Format(sPath, sizeof(sPath), "%s/%s.rec", sPath, filename);
+		}
+		else {
+			Format(sPath, sizeof(sPath), "%s/%d.rec", sPath, iEndTime);
+		}
 		
 		// Add to our loaded record list
 		FileHeader iHeader;
@@ -1313,8 +1317,12 @@ public int StopPlayerMimic(Handle plugin, int numParams)
 	FileHeader iFileHeader;
 	g_hLoadedRecords.GetArray(sPath, iFileHeader, sizeof(FileHeader));
 	
-	SDKUnhook(client, SDKHook_WeaponCanSwitchTo, Hook_WeaponCanSwitchTo);
-	
+	// SDKUnhook(client, SDKHook_WeaponCanSwitchTo, Hook_WeaponCanSwitchTo);
+	if (!HasWeapon(client, "weapon_knife")) {
+		FakeClientCommand(client, "give weapon_knife");
+	}	
+
+
 	char sCategory[64];
 	g_hLoadedRecordsCategory.GetString(sPath, sCategory, sizeof(sCategory));
 	
@@ -1877,7 +1885,7 @@ BMError PlayRecord(int client, const char[] path)
 	Array_Copy(iFileHeader.FH_initialPosition, g_fInitialPosition[client], 3);
 	Array_Copy(iFileHeader.FH_initialAngles, g_fInitialAngles[client], 3);
 	
-	SDKHook(client, SDKHook_WeaponCanSwitchTo, Hook_WeaponCanSwitchTo);
+	// SDKHook(client, SDKHook_WeaponCanSwitchTo, Hook_WeaponCanSwitchTo);
 	
 	// Respawn him to get him moving!
 	if(IsClientInGame(client) && !IsPlayerAlive(client) && GetClientTeam(client) >= CS_TEAM_T)
@@ -1967,4 +1975,26 @@ stock void GetFileFromFrameHandle(ArrayList frames, char[] path, int maxlen)
 		strcopy(path, maxlen, sPath);
 		break;
 	}
+}
+
+bool HasWeapon(int client, const char[] entity, bool caseSensitive = true)
+{
+	if (client == 0 || client > MaxClients || !IsClientInGame(client) || !IsPlayerAlive(client))
+		return false;
+	
+	int weapon; char class[32];
+	for (int i = 0; i < 5; i++)
+	{
+		weapon = GetPlayerWeaponSlot(client, i);
+		
+		if (!IsValidEntity(weapon))
+			continue;
+		
+		GetEntityClassname(weapon, class, sizeof(class));
+		
+		if (StrEqual(class, entity, caseSensitive))
+			return true;
+	}
+	
+	return false;
 }

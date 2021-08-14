@@ -1,9 +1,9 @@
 public Action Command_BotReplayTest(int client, int args) {
-    ChangeSettingById("blockroundendings", true);
-    ServerCommand("bot_quota_mode normal");
-    ServerCommand("bot_add");
+    // ChangeSettingById("blockroundendings", true);
+    // ServerCommand("bot_quota_mode normal");
+    // ServerCommand("bot_add");
 
-    CreateTimer(1.0, BotReplayTestTimer, client);
+    CreateTimer(1.0, BotReplayStartTimer, client);
 
     return Plugin_Handled;
 }
@@ -17,7 +17,7 @@ public Action Command_StartRecord(int client, int args) {
         return Plugin_Handled;
     }
     PM_Message(client, "{GREEN}开始录像{NORMAL}");
-    BotMimic_StartRecording(client, "hello", "new");
+    BotMimic_StartRecording(client, "test", "new");
     return Plugin_Handled;
 }
 
@@ -30,39 +30,39 @@ public Action Command_StopRecord(int client, int args) {
 		return Plugin_Handled;
 	}
     PM_Message(client, "{DARK_RED}停止录像{NORMAL}");
-	BotMimic_StopRecording(client, true);
+	BotMimic_StopRecording(client, true, "test");
 	return Plugin_Handled;
 }
 
-public Action BotReplayTestTimer(Handle timer, int client) {
-    int bot = -1;
-    for (int i = MaxClients; i >= 0; i--) {
-        if (IsValidClient(i) && IsFakeClient(i) && !IsClientSourceTV(i)) {
-            bot = i;
-            break;
-        }
-    }
-    if (bot == -1) {
-        return Plugin_Handled;
-    }
-    SetClientName(bot, "CSGOWiki");
+public Action BotReplayStartTimer(Handle timer, int client) {
+    // int bot = -1;
+    // for (int i = MaxClients; i >= 0; i--) {
+    //     if (IsValidClient(i) && IsFakeClient(i) && !IsClientSourceTV(i)) {
+    //         bot = i;
+    //         break;
+    //     }
+    // }
+    // if (bot == -1) {
+    //     return Plugin_Handled;
+    // }
+    // SetClientName(bot, "CSGOWiki");
 
-    int botTeam = GetClientTeam(client) == CS_TEAM_CT ? CS_TEAM_T : CS_TEAM_CT;
-    CS_SwitchTeam(bot, botTeam);
+    // int botTeam = GetClientTeam(client) == CS_TEAM_CT ? CS_TEAM_T : CS_TEAM_CT;
+    // CS_SwitchTeam(bot, botTeam);
 
 
-    CS_RespawnPlayer(bot);
+    // CS_RespawnPlayer(bot);
     DataPack pack = new DataPack();
-    pack.WriteCell(bot);
-    pack.WriteString("addons/sourcemod/data/botmimic/new/de_inferno/hello.rec");
+    pack.WriteCell(client);
+    pack.WriteString("addons/sourcemod/data/botmimic/new/de_inferno/test.rec");
 
-    RequestFrame(StartReplayTest, pack);
+    RequestFrame(StartReplay, pack);
 
     return Plugin_Handled;
 }
 
 
-public void StartReplayTest(DataPack pack) {
+public void StartReplay(DataPack pack) {
     pack.Reset();
     int client = pack.ReadCell();
     char filepath[128];

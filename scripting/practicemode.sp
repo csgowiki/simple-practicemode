@@ -6,7 +6,7 @@
 #include <sourcemod>
 
 #undef REQUIRE_PLUGIN
-#include <botmimic>
+#include <botmimic_csgowiki>
 #include <csutils>
 
 #include <practicemode>
@@ -240,12 +240,12 @@ public void OnPluginStart() {
 
   // for test
   {
-    RegAdminCmd("sm_botreplaytest", Command_BotReplayTest, ADMFLAG_CHANGEMAP);
-    PM_AddChatAlias(".test-replay", "sm_botreplaytest");
+    RegAdminCmd("sm_botreplay", Command_BotReplayTest, ADMFLAG_CHANGEMAP);
+    PM_AddChatAlias(".treplay", "sm_botreplay");
     RegAdminCmd("sm_startrecord", Command_StartRecord, ADMFLAG_CHANGEMAP);
-    PM_AddChatAlias(".test-rec", "sm_startrecord");
+    PM_AddChatAlias(".trec", "sm_startrecord");
     RegAdminCmd("sm_stoprecord", Command_StopRecord, ADMFLAG_CHANGEMAP);
-    PM_AddChatAlias(".test-stoprec", "sm_stoprecord");
+    PM_AddChatAlias(".tstoprec", "sm_stoprecord");
   }
 
   {
@@ -533,12 +533,12 @@ public void OnPluginEnd() {
 
 public void OnLibraryAdded(const char[] name) {
   g_CSUtilsLoaded = LibraryExists("csutils");
-  g_BotMimicLoaded = LibraryExists("botmimic");
+  g_BotMimicLoaded = LibraryExists("botmimic-csgowiki");
 }
 
 public void OnLibraryRemoved(const char[] name) {
   g_CSUtilsLoaded = LibraryExists("csutils");
-  g_BotMimicLoaded = LibraryExists("botmimic");
+  g_BotMimicLoaded = LibraryExists("botmimic-csgowiki");
 }
 
 /**

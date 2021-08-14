@@ -68,8 +68,9 @@ native bool BotMimic_IsRecordingPaused(int client);
  * 
  * @param client	The client which was recording
  * @param save		Save the record (true) or discard (false)
+ * @param filename  The filename saving(without .rec), timestamp for default
  */
-native void BotMimic_StopRecording(int client, bool save = true);
+native void BotMimic_StopRecording(int client, bool save = true, const char[] filename="");
 
 /**
  * Save the current frame with the given name as bookmark.
@@ -350,8 +351,8 @@ stock void BotMimic_GetErrorString(BMError error, char[] str, int maxlen)
 
 public SharedPlugin __pl_botmimic = 
 {
-	name = "botmimic",
-	file = "botmimic.smx",
+	name = "botmimic_csgowiki",
+	file = "botmimic_csgowiki.smx",
 #if defined REQUIRE_PLUGIN
 	required = 1
 #else
