@@ -533,12 +533,12 @@ public void OnPluginEnd() {
 
 public void OnLibraryAdded(const char[] name) {
   g_CSUtilsLoaded = LibraryExists("csutils");
-  g_BotMimicLoaded = LibraryExists("botmimic");
+  g_BotMimicLoaded = LibraryExists("botmimic-csgowiki");
 }
 
 public void OnLibraryRemoved(const char[] name) {
   g_CSUtilsLoaded = LibraryExists("csutils");
-  g_BotMimicLoaded = LibraryExists("botmimic");
+  g_BotMimicLoaded = LibraryExists("botmimic-csgowiki");
 }
 
 /**

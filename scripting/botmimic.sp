@@ -22,7 +22,7 @@
 
 #pragma newdecls required
 
-#define PLUGIN_VERSION "2.1"
+#define PLUGIN_VERSION "1.0"
 
 #define BM_MAGIC 0xdeadbeef
 
@@ -143,15 +143,15 @@ ConVar g_hCVRespawnOnDeath;
 public Plugin myinfo = 
 {
 	name = "Bot Mimic",
-	author = "Jannik \"Peace-Maker\" Hartung",
+	author = "CarOL(based on Jannik \"Peace-Maker\" Hartung)",
 	description = "Bots mimic your movements!",
 	version = PLUGIN_VERSION,
-	url = "http://www.wcfan.de/"
+	url = "https://github.com/hx-w/simple-practicemode"
 }
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
-	RegPluginLibrary("botmimic");
+	RegPluginLibrary("botmimic-csgowiki");
 	CreateNative("BotMimic_StartRecording", StartRecording);
 	CreateNative("BotMimic_PauseRecording", PauseRecording);
 	CreateNative("BotMimic_ResumeRecording", ResumeRecording);
