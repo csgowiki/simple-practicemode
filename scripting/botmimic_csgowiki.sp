@@ -15,7 +15,7 @@
 #include <cstrike>
 #include <sdkhooks>
 #include <smlib>
-#include <botmimic>
+#include <botmimic_csgowiki>
 
 #undef REQUIRE_EXTENSIONS
 #include <dhooks>
@@ -142,7 +142,7 @@ ConVar g_hCVRespawnOnDeath;
 
 public Plugin myinfo = 
 {
-	name = "Bot Mimic",
+	name = "Bot Mimic-CSGOWiki",
 	author = "CarOL(based on Jannik \"Peace-Maker\" Hartung)",
 	description = "Bots mimic your movements!",
 	version = PLUGIN_VERSION,
@@ -151,7 +151,7 @@ public Plugin myinfo =
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
-	RegPluginLibrary("botmimic-csgowiki");
+	RegPluginLibrary("botmimic_csgowiki");
 	CreateNative("BotMimic_StartRecording", StartRecording);
 	CreateNative("BotMimic_PauseRecording", PauseRecording);
 	CreateNative("BotMimic_ResumeRecording", ResumeRecording);
@@ -564,6 +564,11 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 		TeleportEntity(client, NULL_VECTOR, angles, fActualVelocity);
 	}
 	
+	if (g_bBotSwitchedWeapon[client]) {
+		FakeClientCommand(client, "use %s", g_BotActiveWeaponName[client]);
+		g_bBotSwitchedWeapon[client] = false;
+	}
+
 	if(iFrame.newWeapon != CSWeapon_NONE)
 	{
 		char sAlias[64];
@@ -573,7 +578,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 		strcopy(g_BotActiveWeaponName[client], sizeof(g_BotActiveWeaponName), sAlias);
 
 		g_bBotSwitchedWeapon[client] = true;
-		CreateTimer(0.1, SwitchWeaponTimer, client);
+		// CreateTimer(0.1, SwitchWeaponTimer, client);
 		if (g_iBotMimicTick[client] == 0 || !HasWeapon(client, sAlias)) {
 			char weaponCmd[32];
 			Format(weaponCmd, sizeof(weaponCmd), "give %s", sAlias);
@@ -608,11 +613,11 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 	return Plugin_Changed;
 }
 
-public Action SwitchWeaponTimer(Handle timer, int client) {
-	FakeClientCommand(client, "use %s", g_BotActiveWeaponName[client]);
-	g_bBotSwitchedWeapon[client] = false;
-	return Plugin_Handled;
-}
+// public Action SwitchWeaponTimer(Handle timer, int client) {
+// 	FakeClientCommand(client, "use %s", g_BotActiveWeaponName[client]);
+// 	g_bBotSwitchedWeapon[client] = false;
+// 	return Plugin_Handled;
+// }
 
 /**
  * Event Callbacks
