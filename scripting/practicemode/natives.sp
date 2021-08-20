@@ -126,8 +126,8 @@ public int Native_AddChatAlias(Handle plugin, int numParams) {
 
   // add 。trigger
   Format(falias, sizeof(falias), "。%s", alias);
-  if (g_ChatAliases.FindString(alias) == -1) {
-    g_ChatAliases.PushString(alias);
+  if (g_ChatAliases.FindString(falias) == -1) {
+    g_ChatAliases.PushString(falias);
     g_ChatAliasesCommands.PushString(command);
   }
 }
