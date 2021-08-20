@@ -241,16 +241,16 @@ public void OnPluginStart() {
   // for test
   {
     RegAdminCmd("sm_botreplay", Command_BotReplayTest, ADMFLAG_CHANGEMAP);
-    PM_AddChatAlias(".treplay", "sm_botreplay");
+    PM_AddChatAlias("treplay", "sm_botreplay");
     RegAdminCmd("sm_startrecord", Command_StartRecord, ADMFLAG_CHANGEMAP);
-    PM_AddChatAlias(".trec", "sm_startrecord");
+    PM_AddChatAlias("trec", "sm_startrecord");
     RegAdminCmd("sm_stoprecord", Command_StopRecord, ADMFLAG_CHANGEMAP);
-    PM_AddChatAlias(".tstoprec", "sm_stoprecord");
+    PM_AddChatAlias("tstoprec", "sm_stoprecord");
   }
 
   {
     RegAdminCmd("sm_practicemap", Command_Map, ADMFLAG_CHANGEMAP);
-    PM_AddChatAlias(".map", "sm_practicemap");
+    PM_AddChatAlias("map", "sm_practicemap");
 
     RegAdminCmd(
         "practicemode_debuginfo", Command_DebugInfo, ADMFLAG_CHANGEMAP,
@@ -260,185 +260,185 @@ public void OnPluginStart() {
   // Grenade history commands
   {
     RegConsoleCmd("sm_grenadeback", Command_GrenadeBack);
-    PM_AddChatAlias(".back", "sm_grenadeback");
+    PM_AddChatAlias("back", "sm_grenadeback");
 
     RegConsoleCmd("sm_grenadeforward", Command_GrenadeForward);
-    PM_AddChatAlias(".forward", "sm_grenadeforward");
+    PM_AddChatAlias("forward", "sm_grenadeforward");
 
     RegConsoleCmd("sm_lastgrenade", Command_LastGrenade);
-    PM_AddChatAlias(".last", "sm_lastgrenade");
+    PM_AddChatAlias("last", "sm_lastgrenade");
 
     RegConsoleCmd("sm_clearnades", Command_ClearNades);
-    PM_AddChatAlias(".clearnades", "sm_clearnades");
+    PM_AddChatAlias("clearnades", "sm_clearnades");
   }
 
   // Spawn commands
   {
     RegConsoleCmd("sm_gotospawn", Command_GotoSpawn);
-    PM_AddChatAlias(".spawn", "sm_gotospawn");
-    PM_AddChatAlias(".bestspawn", "sm_gotospawn");
+    PM_AddChatAlias("spawn", "sm_gotospawn");
+    PM_AddChatAlias("bestspawn", "sm_gotospawn");
 
     RegConsoleCmd("sm_gotospawnct", Command_GotoSpawnCT);
-    PM_AddChatAlias(".ctspawn", "sm_gotospawnct");
+    PM_AddChatAlias("ctspawn", "sm_gotospawnct");
 
     RegConsoleCmd("sm_gotospawnt", Command_GotoSpawnT);
-    PM_AddChatAlias(".tspawn", "sm_gotospawnt");
+    PM_AddChatAlias("tspawn", "sm_gotospawnt");
 
     RegConsoleCmd("sm_worstspawn", Command_GotoWorstSpawn);
-    PM_AddChatAlias(".worstspawn", "sm_worstspawn");
+    PM_AddChatAlias("worstspawn", "sm_worstspawn");
 
     RegConsoleCmd("sm_namespawn", Command_SaveSpawn);
-    PM_AddChatAlias(".namespawn", "sm_namespawn");
+    PM_AddChatAlias("namespawn", "sm_namespawn");
   }
 
   // csutils powered nade stuff.
   {
     RegConsoleCmd("sm_throw", Command_Throw);
-    PM_AddChatAlias(".throw", "sm_throw");
-    PM_AddChatAlias(".rethrow", "sm_throw");
+    PM_AddChatAlias("throw", "sm_throw");
+    PM_AddChatAlias("rethrow", "sm_throw");
   }
 
   // Bot commands
   {
     RegConsoleCmd("sm_bot", Command_Bot);
-    PM_AddChatAlias(".bot", "sm_bot");
+    PM_AddChatAlias("bot", "sm_bot");
 
     RegConsoleCmd("sm_tbot", Command_TBot);
-    PM_AddChatAlias(".tbot", "sm_tbot");
+    PM_AddChatAlias("tbot", "sm_tbot");
     RegConsoleCmd("sm_ctbot", Command_CTBot);
-    PM_AddChatAlias(".ctbot", "sm_ctbot");
+    PM_AddChatAlias("ctbot", "sm_ctbot");
 
     RegConsoleCmd("sm_movebot", Command_MoveBot);
-    PM_AddChatAlias(".movebot", "sm_movebot");
+    PM_AddChatAlias("movebot", "sm_movebot");
 
     RegConsoleCmd("sm_crouchbot", Command_CrouchBot);
-    PM_AddChatAlias(".crouchbot", "sm_crouchbot");
-    PM_AddChatAlias(".cbot", "sm_crouchbot");
+    PM_AddChatAlias("crouchbot", "sm_crouchbot");
+    PM_AddChatAlias("cbot", "sm_crouchbot");
 
     RegConsoleCmd("sm_botplace", Command_BotPlace);
-    PM_AddChatAlias(".botplace", "sm_botplace");
-    PM_AddChatAlias(".bot2", "sm_botplace");
+    PM_AddChatAlias("botplace", "sm_botplace");
+    PM_AddChatAlias("bot2", "sm_botplace");
 
     RegConsoleCmd("sm_swapbot", Command_SwapBot);
-    PM_AddChatAlias(".swapbot", "sm_swapbot");
-    PM_AddChatAlias(".botswap", "sm_swapbot");
+    PM_AddChatAlias("swapbot", "sm_swapbot");
+    PM_AddChatAlias("botswap", "sm_swapbot");
 
     RegConsoleCmd("sm_boost", Command_Boost);
-    PM_AddChatAlias(".boost", "sm_boost");
+    PM_AddChatAlias("boost", "sm_boost");
 
     RegConsoleCmd("sm_crouchboost", Command_CrouchBoost);
-    PM_AddChatAlias(".crouchboost", "sm_crouchboost");
-    PM_AddChatAlias(".cboost", "sm_crouchboost");
+    PM_AddChatAlias("crouchboost", "sm_crouchboost");
+    PM_AddChatAlias("cboost", "sm_crouchboost");
 
     RegConsoleCmd("sm_removebot", Command_RemoveBot);
-    PM_AddChatAlias(".removebot", "sm_removebot");
-    PM_AddChatAlias(".kickbot", "sm_removebot");
-    PM_AddChatAlias(".clearbot", "sm_removebot");
-    PM_AddChatAlias(".nobot", "sm_removebot");
-    PM_AddChatAlias(".deletebot", "sm_removebot");
+    PM_AddChatAlias("removebot", "sm_removebot");
+    PM_AddChatAlias("kickbot", "sm_removebot");
+    PM_AddChatAlias("clearbot", "sm_removebot");
+    PM_AddChatAlias("nobot", "sm_removebot");
+    PM_AddChatAlias("deletebot", "sm_removebot");
 
     RegConsoleCmd("sm_removebots", Command_RemoveBots);
-    PM_AddChatAlias(".kickbots", "sm_removebots");
-    PM_AddChatAlias(".clearbots", "sm_removebots");
-    PM_AddChatAlias(".nobots", "sm_removebots");
+    PM_AddChatAlias("kickbots", "sm_removebots");
+    PM_AddChatAlias("clearbots", "sm_removebots");
+    PM_AddChatAlias("nobots", "sm_removebots");
 
     RegConsoleCmd("sm_savebots", Command_SaveBots);
-    PM_AddChatAlias(".savebots", "sm_savebots");
+    PM_AddChatAlias("savebots", "sm_savebots");
 
     RegConsoleCmd("sm_loadbots", Command_LoadBots);
-    PM_AddChatAlias(".loadbots", "sm_loadbots");
+    PM_AddChatAlias("loadbots", "sm_loadbots");
 
     RegConsoleCmd("sm_botsmenu", Command_BotsMenu);
-    PM_AddChatAlias(".bots", "sm_botsmenu");
+    PM_AddChatAlias("bots", "sm_botsmenu");
   }
 
   // Saved grenade location commands
   {
     RegConsoleCmd("sm_respawn", Command_Respawn);
-    PM_AddChatAlias(".respawn", "sm_respawn");
+    PM_AddChatAlias("respawn", "sm_respawn");
 
     RegConsoleCmd("sm_stoprespawn", Command_StopRespawn);
-    PM_AddChatAlias(".stoprespawn", "sm_stoprespawn");
+    PM_AddChatAlias("stoprespawn", "sm_stoprespawn");
 
     RegConsoleCmd("sm_spec", Command_Spec);
-    PM_AddChatAlias(".spec", "sm_spec");
+    PM_AddChatAlias("spec", "sm_spec");
 
     RegConsoleCmd("sm_joint", Command_JoinT);
-    PM_AddChatAlias(".t", "sm_joint");
+    PM_AddChatAlias("t", "sm_joint");
 
     RegConsoleCmd("sm_joinct", Command_JoinCT);
-    PM_AddChatAlias(".ct", "sm_joinct");
+    PM_AddChatAlias("ct", "sm_joinct");
   }
 
   // Other commands
   {
     RegConsoleCmd("sm_testflash", Command_TestFlash);
 
-    PM_AddChatAlias(".flash", "sm_testflash");
-    PM_AddChatAlias(".testflash", "sm_testflash");
-    PM_AddChatAlias(".startflash", "sm_testflash");
+    PM_AddChatAlias("flash", "sm_testflash");
+    PM_AddChatAlias("testflash", "sm_testflash");
+    PM_AddChatAlias("startflash", "sm_testflash");
 
     RegConsoleCmd("sm_stopflash", Command_StopFlash);
-    PM_AddChatAlias(".endflash", "sm_stopflash");
-    PM_AddChatAlias(".stopflash", "sm_stopflash");
+    PM_AddChatAlias("endflash", "sm_stopflash");
+    PM_AddChatAlias("stopflash", "sm_stopflash");
 
     RegConsoleCmd("sm_noflash", Command_NoFlash);
-    PM_AddChatAlias(".noflash", "sm_noflash");
+    PM_AddChatAlias("noflash", "sm_noflash");
 
     // TODO: A timer menu may be more accesible to users, as the number of timer types continues to
     // increase...
     RegConsoleCmd("sm_timers", Command_TimersMenu);
-    PM_AddChatAlias(".timers", "sm_timers");
-    PM_AddChatAlias(".times", "sm_timers");
+    PM_AddChatAlias("timers", "sm_timers");
+    PM_AddChatAlias("times", "sm_timers");
 
     RegConsoleCmd("sm_time", Command_Time);
-    PM_AddChatAlias(".timer", "sm_time");
-    PM_AddChatAlias(".time", "sm_time");
+    PM_AddChatAlias("timer", "sm_time");
+    PM_AddChatAlias("time", "sm_time");
 
     RegConsoleCmd("sm_time2", Command_Time2);
-    PM_AddChatAlias(".timer2", "sm_time2");
+    PM_AddChatAlias("timer2", "sm_time2");
 
     RegConsoleCmd("sm_countdown", Command_CountDown);
-    PM_AddChatAlias(".countdown", "sm_countdown");
+    PM_AddChatAlias("countdown", "sm_countdown");
 
     RegConsoleCmd("sm_fastforward", Command_FastForward);
-    PM_AddChatAlias(".fastforward", "sm_fastforward");
-    PM_AddChatAlias(".fast", "sm_fastforward");
-    PM_AddChatAlias(".ff", "sm_fastforward");
+    PM_AddChatAlias("fastforward", "sm_fastforward");
+    PM_AddChatAlias("fast", "sm_fastforward");
+    PM_AddChatAlias("ff", "sm_fastforward");
 
     RegConsoleCmd("sm_pmsettings", Command_Settings);
-    PM_AddChatAlias(".settings", "sm_pmsettings");
+    PM_AddChatAlias("settings", "sm_pmsettings");
 
     RegConsoleCmd("sm_repeat", Command_Repeat);
-    PM_AddChatAlias(".repeat", "sm_repeat");
+    PM_AddChatAlias("repeat", "sm_repeat");
 
     RegConsoleCmd("sm_stoprepeat", Command_StopRepeat);
-    PM_AddChatAlias(".stoprepeat", "sm_stoprepeat");
+    PM_AddChatAlias("stoprepeat", "sm_stoprepeat");
 
     RegConsoleCmd("sm_delay", Command_Delay);
-    PM_AddChatAlias(".delay", "sm_delay");
+    PM_AddChatAlias("delay", "sm_delay");
 
     RegConsoleCmd("sm_stopall", Command_StopAll);
-    PM_AddChatAlias(".stop", "sm_stopall");
+    PM_AddChatAlias("stop", "sm_stopall");
 
     RegConsoleCmd("sm_dryrun", Command_DryRun);
-    PM_AddChatAlias(".dry", "sm_dryrun");
-    PM_AddChatAlias(".dryrun", "sm_dryrun");
+    PM_AddChatAlias("dry", "sm_dryrun");
+    PM_AddChatAlias("dryrun", "sm_dryrun");
 
     RegConsoleCmd("sm_enablesetting", Command_Enable);
-    PM_AddChatAlias(".enable", "sm_enablesetting");
+    PM_AddChatAlias("enable", "sm_enablesetting");
 
     RegConsoleCmd("sm_disablesetting", Command_Disable);
-    PM_AddChatAlias(".disable", "sm_disablesetting");
+    PM_AddChatAlias("disable", "sm_disablesetting");
 
     RegConsoleCmd("sm_god", Command_God);
-    PM_AddChatAlias(".god", "sm_god");
+    PM_AddChatAlias("god", "sm_god");
 
     RegConsoleCmd("sm_endround", Command_EndRound);
-    PM_AddChatAlias(".endround", "sm_endround");
+    PM_AddChatAlias("endround", "sm_endround");
 
     RegConsoleCmd("sm_break", Command_Break);
-    PM_AddChatAlias(".break", "sm_break");
+    PM_AddChatAlias("break", "sm_break");
   }
 
   // New Plugin cvars
