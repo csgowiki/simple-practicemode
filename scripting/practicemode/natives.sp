@@ -116,9 +116,18 @@ public int Native_AddChatAlias(Handle plugin, int numParams) {
   GetNativeString(1, alias, sizeof(alias));
   GetNativeString(2, command, sizeof(command));
 
+  char falias[ALIAS_LENGTH];
+  Format(falias, sizeof(falias), ".%s", alias);
   // don't allow duplicate aliases to be added
-  if (g_ChatAliases.FindString(alias) == -1) {
-    g_ChatAliases.PushString(alias);
+  if (g_ChatAliases.FindString(falias) == -1) {
+    g_ChatAliases.PushString(falias);
+    g_ChatAliasesCommands.PushString(command);
+  }
+
+  // add 。trigger
+  Format(falias, sizeof(falias), "。%s", alias);
+  if (g_ChatAliases.FindString(falias) == -1) {
+    g_ChatAliases.PushString(falias);
     g_ChatAliasesCommands.PushString(command);
   }
 }
