@@ -6,7 +6,7 @@
 #include <sourcemod>
 
 #undef REQUIRE_PLUGIN
-#include <botmimic_csgowiki>
+#include <botmimic_fix>
 #include <csutils>
 
 #include <practicemode>
