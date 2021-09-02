@@ -10,7 +10,7 @@ spcomp64
 
 # include
 *.inc
-!botmimic_csgowiki.inc
+!botmimic_fix.inc
 !csutils.inc
 !dhooks.inc
 !logdebug.inc

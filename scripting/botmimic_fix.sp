@@ -15,7 +15,7 @@
 #include <cstrike>
 #include <sdkhooks>
 #include <smlib>
-#include <botmimic_csgowiki>
+#include <botmimic_fix>
 
 #undef REQUIRE_EXTENSIONS
 #include <dhooks>
@@ -151,7 +151,7 @@ public Plugin myinfo =
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
-	RegPluginLibrary("botmimic_csgowiki");
+	RegPluginLibrary("botmimic_fix");
 	CreateNative("BotMimic_StartRecording", StartRecording);
 	CreateNative("BotMimic_PauseRecording", PauseRecording);
 	CreateNative("BotMimic_ResumeRecording", ResumeRecording);
