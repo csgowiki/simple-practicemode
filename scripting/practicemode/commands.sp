@@ -166,8 +166,8 @@ public Action Command_StopAll(int client, int args) {
   if (g_RunningRepeatedCommand[client]) {
     Command_StopRepeat(client, 0);
   }
-  if (g_BotMimicLoaded && BotMimic_IsPlayerRecording(client)) {
-    BotMimic_StopRecording(client, false /* save */);
+  if (g_BotMimicLoaded && BotMimicFix_IsPlayerRecording(client)) {
+    BotMimicFix_StopRecording(client, false /* save */);
   }
   return Plugin_Handled;
 }

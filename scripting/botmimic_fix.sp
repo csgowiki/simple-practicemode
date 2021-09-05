@@ -152,38 +152,38 @@ public Plugin myinfo =
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
 	RegPluginLibrary("botmimic_fix");
-	CreateNative("BotMimic_StartRecording", StartRecording);
-	CreateNative("BotMimic_PauseRecording", PauseRecording);
-	CreateNative("BotMimic_ResumeRecording", ResumeRecording);
-	CreateNative("BotMimic_IsRecordingPaused", IsRecordingPaused);
-	CreateNative("BotMimic_StopRecording", StopRecording);
-	CreateNative("BotMimic_SaveBookmark", SaveBookmark);
-	CreateNative("BotMimic_DeleteRecord", DeleteRecord);
-	CreateNative("BotMimic_IsPlayerRecording", IsPlayerRecording);
-	CreateNative("BotMimic_IsPlayerMimicing", IsPlayerMimicing);
-	CreateNative("BotMimic_GetRecordPlayerMimics", GetRecordPlayerMimics);
-	CreateNative("BotMimic_PlayRecordFromFile", PlayRecordFromFile);
-	CreateNative("BotMimic_PlayRecordByName", PlayRecordByName);
-	CreateNative("BotMimic_ResetPlayback", ResetPlayback);
-	CreateNative("BotMimic_GoToBookmark", GoToBookmark);
-	CreateNative("BotMimic_StopPlayerMimic", StopPlayerMimic);
-	CreateNative("BotMimic_GetFileHeaders", GetFileHeaders);
-	CreateNative("BotMimic_ChangeRecordName", ChangeRecordName);
-	CreateNative("BotMimic_GetLoadedRecordCategoryList", GetLoadedRecordCategoryList);
-	CreateNative("BotMimic_GetLoadedRecordList", GetLoadedRecordList);
-	CreateNative("BotMimic_GetFileCategory", GetFileCategory);
-	CreateNative("BotMimic_GetRecordBookmarks", GetRecordBookmarks);
+	CreateNative("BotMimicFix_StartRecording", StartRecording);
+	CreateNative("BotMimicFix_PauseRecording", PauseRecording);
+	CreateNative("BotMimicFix_ResumeRecording", ResumeRecording);
+	CreateNative("BotMimicFix_IsRecordingPaused", IsRecordingPaused);
+	CreateNative("BotMimicFix_StopRecording", StopRecording);
+	CreateNative("BotMimicFix_SaveBookmark", SaveBookmark);
+	CreateNative("BotMimicFix_DeleteRecord", DeleteRecord);
+	CreateNative("BotMimicFix_IsPlayerRecording", IsPlayerRecording);
+	CreateNative("BotMimicFix_IsPlayerMimicing", IsPlayerMimicing);
+	CreateNative("BotMimicFix_GetRecordPlayerMimics", GetRecordPlayerMimics);
+	CreateNative("BotMimicFix_PlayRecordFromFile", PlayRecordFromFile);
+	CreateNative("BotMimicFix_PlayRecordByName", PlayRecordByName);
+	CreateNative("BotMimicFix_ResetPlayback", ResetPlayback);
+	CreateNative("BotMimicFix_GoToBookmark", GoToBookmark);
+	CreateNative("BotMimicFix_StopPlayerMimic", StopPlayerMimic);
+	CreateNative("BotMimicFix_GetFileHeaders", GetFileHeaders);
+	CreateNative("BotMimicFix_ChangeRecordName", ChangeRecordName);
+	CreateNative("BotMimicFix_GetLoadedRecordCategoryList", GetLoadedRecordCategoryList);
+	CreateNative("BotMimicFix_GetLoadedRecordList", GetLoadedRecordList);
+	CreateNative("BotMimicFix_GetFileCategory", GetFileCategory);
+	CreateNative("BotMimicFix_GetRecordBookmarks", GetRecordBookmarks);
 	
-	g_hfwdOnStartRecording = CreateGlobalForward("BotMimic_OnStartRecording", ET_Hook, Param_Cell, Param_String, Param_String, Param_String, Param_String);
-	g_hfwdOnRecordingPauseStateChanged = CreateGlobalForward("BotMimic_OnRecordingPauseStateChanged", ET_Ignore, Param_Cell, Param_Cell);
-	g_hfwdOnRecordingBookmarkSaved = CreateGlobalForward("BotMimic_OnRecordingBookmarkSaved", ET_Ignore, Param_Cell, Param_String);
-	g_hfwdOnStopRecording = CreateGlobalForward("BotMimic_OnStopRecording", ET_Hook, Param_Cell, Param_String, Param_String, Param_String, Param_String, Param_CellByRef);
-	g_hfwdOnRecordSaved = CreateGlobalForward("BotMimic_OnRecordSaved", ET_Ignore, Param_Cell, Param_String, Param_String, Param_String, Param_String);
-	g_hfwdOnRecordDeleted = CreateGlobalForward("BotMimic_OnRecordDeleted", ET_Ignore, Param_String, Param_String, Param_String);
-	g_hfwdOnPlayerStartsMimicing = CreateGlobalForward("BotMimic_OnPlayerStartsMimicing", ET_Hook, Param_Cell, Param_String, Param_String, Param_String);
-	g_hfwdOnPlayerStopsMimicing = CreateGlobalForward("BotMimic_OnPlayerStopsMimicing", ET_Ignore, Param_Cell, Param_String, Param_String, Param_String);
-	g_hfwdOnPlayerMimicLoops = CreateGlobalForward("BotMimic_OnPlayerMimicLoops", ET_Ignore, Param_Cell);
-	g_hfwdOnPlayerMimicBookmark = CreateGlobalForward("BotMimic_OnPlayerMimicBookmark", ET_Ignore, Param_Cell, Param_String);
+	g_hfwdOnStartRecording = CreateGlobalForward("BotMimicFix_OnStartRecording", ET_Hook, Param_Cell, Param_String, Param_String, Param_String, Param_String);
+	g_hfwdOnRecordingPauseStateChanged = CreateGlobalForward("BotMimicFix_OnRecordingPauseStateChanged", ET_Ignore, Param_Cell, Param_Cell);
+	g_hfwdOnRecordingBookmarkSaved = CreateGlobalForward("BotMimicFix_OnRecordingBookmarkSaved", ET_Ignore, Param_Cell, Param_String);
+	g_hfwdOnStopRecording = CreateGlobalForward("BotMimicFix_OnStopRecording", ET_Hook, Param_Cell, Param_String, Param_String, Param_String, Param_String, Param_CellByRef);
+	g_hfwdOnRecordSaved = CreateGlobalForward("BotMimicFix_OnRecordSaved", ET_Ignore, Param_Cell, Param_String, Param_String, Param_String, Param_String);
+	g_hfwdOnRecordDeleted = CreateGlobalForward("BotMimicFix_OnRecordDeleted", ET_Ignore, Param_String, Param_String, Param_String);
+	g_hfwdOnPlayerStartsMimicing = CreateGlobalForward("BotMimicFix_OnPlayerStartsMimicing", ET_Hook, Param_Cell, Param_String, Param_String, Param_String);
+	g_hfwdOnPlayerStopsMimicing = CreateGlobalForward("BotMimicFix_OnPlayerStopsMimicing", ET_Ignore, Param_Cell, Param_String, Param_String, Param_String);
+	g_hfwdOnPlayerMimicLoops = CreateGlobalForward("BotMimicFix_OnPlayerMimicLoops", ET_Ignore, Param_Cell);
+	g_hfwdOnPlayerMimicBookmark = CreateGlobalForward("BotMimicFix_OnPlayerMimicBookmark", ET_Ignore, Param_Cell, Param_String);
 }
 
 public void OnPluginStart()
@@ -337,10 +337,10 @@ public void OnClientPutInServer(int client)
 public void OnClientDisconnect(int client)
 {
 	if(g_hRecording[client] != null)
-		BotMimic_StopRecording(client);
+		BotMimicFix_StopRecording(client);
 	
 	if(g_hBotMimicsRecord[client] != null)
-		BotMimic_StopPlayerMimic(client);
+		BotMimicFix_StopPlayerMimic(client);
 }
 
 public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float vel[3], const float angles[3], int weapon, int subtype, int cmdnum, int tickcount, int seed, const int mouse[2])
@@ -468,7 +468,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 		PrintCenterText(client, "<font color='#87CEFA'>回放结束");
 		g_iBotMimicTick[client] = 0;
 		g_iCurrentAdditionalTeleportIndex[client] = 0;
-		BotMimic_StopPlayerMimic(client); // for once
+		BotMimicFix_StopPlayerMimic(client); // for once
 		return Plugin_Continue;
 	}
 
@@ -645,7 +645,7 @@ public void Event_OnPlayerDeath(Event event, const char[] name, bool dontBroadca
 	// This one has been recording currently
 	if(g_hRecording[client] != null)
 	{
-		BotMimic_StopRecording(client, true);
+		BotMimicFix_StopRecording(client, true);
 	}
 	// This bot has been playing one
 	else if(g_hBotMimicsRecord[client] != null)
@@ -654,7 +654,7 @@ public void Event_OnPlayerDeath(Event event, const char[] name, bool dontBroadca
 		g_iBotMimicTick[client] = 0;
 		g_iCurrentAdditionalTeleportIndex[client] = 0;
 		if(g_hCVRespawnOnDeath.BoolValue && GetClientTeam(client) >= CS_TEAM_T)
-			BotMimic_StopPlayerMimic(client);
+			BotMimicFix_StopPlayerMimic(client);
 			// CreateTimer(1.0, Timer_DelayedRespawn, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 	}
 }
@@ -809,7 +809,7 @@ public int StartRecording(Handle plugin, int numParams)
 	Call_Finish(result);
 	
 	if(result >= Plugin_Handled)
-		BotMimic_StopRecording(client, false);
+		BotMimicFix_StopRecording(client, false);
 }
 
 public int PauseRecording(Handle plugin, int numParams)
@@ -1150,7 +1150,7 @@ public int DeleteRecord(Handle plugin, int numParams)
 			// Stop the bots from mimicing this one
 			if(g_hBotMimicsRecord[i] == iFileHeader.FH_frames)
 			{
-				BotMimic_StopPlayerMimic(i);
+				BotMimicFix_StopPlayerMimic(i);
 				iCount++;
 			}
 		}
@@ -1223,7 +1223,7 @@ public int GetRecordPlayerMimics(Handle plugin, int numParams)
 		return;
 	}
 	
-	if(!BotMimic_IsPlayerMimicing(client))
+	if(!BotMimicFix_IsPlayerMimicing(client))
 	{
 		ThrowNativeError(SP_ERROR_NATIVE, "Player is not mimicing.");
 		return;
@@ -1244,7 +1244,7 @@ public int GoToBookmark(Handle plugin, int numParams)
 		return;
 	}
 	
-	if(!BotMimic_IsPlayerMimicing(client))
+	if(!BotMimicFix_IsPlayerMimicing(client))
 	{
 		ThrowNativeError(SP_ERROR_NATIVE, "Player is not mimicing.");
 		return;
@@ -1297,7 +1297,7 @@ public int StopPlayerMimic(Handle plugin, int numParams)
 		return;
 	}
 	
-	if(!BotMimic_IsPlayerMimicing(client))
+	if(!BotMimicFix_IsPlayerMimicing(client))
 	{
 		ThrowNativeError(SP_ERROR_NATIVE, "Player is not mimicing.");
 		return;
@@ -1400,7 +1400,7 @@ public int ResetPlayback(Handle plugin, int numParams)
 		return;
 	}
 	
-	if(!BotMimic_IsPlayerMimicing(client))
+	if(!BotMimicFix_IsPlayerMimicing(client))
 	{
 		ThrowNativeError(SP_ERROR_NATIVE, "Player is not mimicing.");
 		return;
