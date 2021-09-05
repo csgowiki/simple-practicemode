@@ -181,7 +181,7 @@ Handle g_OnPracticeModeSettingsRead = INVALID_HANDLE;
 
 #define CHICKEN_MODEL "models/chicken/chicken.mdl"
 
-#include "practicemode/botreplay_new.sp"
+// #include "practicemode/botreplay_new.sp"
 
 #include "practicemode/backups.sp"
 #include "practicemode/bots.sp"
@@ -239,14 +239,14 @@ public void OnPluginStart() {
   }
 
   // for test
-  {
-    RegAdminCmd("sm_botreplay", Command_BotReplayTest, ADMFLAG_CHANGEMAP);
-    PM_AddChatAlias("treplay", "sm_botreplay");
-    RegAdminCmd("sm_startrecord", Command_StartRecord, ADMFLAG_CHANGEMAP);
-    PM_AddChatAlias("trec", "sm_startrecord");
-    RegAdminCmd("sm_stoprecord", Command_StopRecord, ADMFLAG_CHANGEMAP);
-    PM_AddChatAlias("tstoprec", "sm_stoprecord");
-  }
+  // {
+  //   RegAdminCmd("sm_botreplay", Command_BotReplayTest, ADMFLAG_CHANGEMAP);
+  //   PM_AddChatAlias("treplay", "sm_botreplay");
+  //   RegAdminCmd("sm_startrecord", Command_StartRecord, ADMFLAG_CHANGEMAP);
+  //   PM_AddChatAlias("trec", "sm_startrecord");
+  //   RegAdminCmd("sm_stoprecord", Command_StopRecord, ADMFLAG_CHANGEMAP);
+  //   PM_AddChatAlias("tstoprec", "sm_stoprecord");
+  // }
 
   {
     RegAdminCmd("sm_practicemap", Command_Map, ADMFLAG_CHANGEMAP);
