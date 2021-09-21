@@ -472,6 +472,8 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 		return Plugin_Continue;
 	}
 
+	// PrintToChatAll("[BotMimic] current: %d;  total: %d", g_iBotMimicTick[client], g_iBotMimicRecordTickCount[client]);
+
 	float percent = 100 * float(g_iBotMimicTick[client]) / g_iBotMimicRecordTickCount[client];
 	PrintCenterText(client, "回放进度：<font color='#0CED26'>%.1f<font color='#ffffff'>\%", percent);
 	
@@ -1726,10 +1728,10 @@ BMError LoadRecordFromFile(const char[] path, const char[] sCategory, FileHeader
 	char[] sRecordName = new char[iNameLength+1];
 	hFile.ReadString(sRecordName, iNameLength+1, iNameLength);
 	sRecordName[iNameLength] = '\0';
-	
+
 	hFile.Read(headerInfo.FH_initialPosition, 3, 4);
 	hFile.Read(headerInfo.FH_initialAngles, 2, 4);
-	
+
 	int iTickCount;
 	hFile.ReadInt32(iTickCount);
 	
@@ -1752,10 +1754,6 @@ BMError LoadRecordFromFile(const char[] path, const char[] sCategory, FileHeader
  		delete hAT;
  		g_hLoadedRecordsAdditionalTeleport.Remove(path);
 	}
-	
-	//PrintToServer("Record %s:", sRecordName);
-	//PrintToServer("File %s:", path);
-	//PrintToServer("EndTime: %d, BinaryVersion: 0x%x, ticks: %d, initialPosition: %f,%f,%f, initialAngles: %f,%f,%f", iRecordTime, iBinaryFormatVersion, iTickCount, headerInfo[FH_initialPosition][0], headerInfo[FH_initialPosition][1], headerInfo[FH_initialPosition][2], headerInfo[FH_initialAngles][0], headerInfo[FH_initialAngles][1], headerInfo[FH_initialAngles][2]);
 	
 	if (iBookmarkCount > 0)
 	{

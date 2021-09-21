@@ -181,8 +181,6 @@ Handle g_OnPracticeModeSettingsRead = INVALID_HANDLE;
 
 #define CHICKEN_MODEL "models/chicken/chicken.mdl"
 
-// #include "practicemode/botreplay_new.sp"
-
 #include "practicemode/backups.sp"
 #include "practicemode/bots.sp"
 #include "practicemode/bots_menu.sp"
@@ -238,15 +236,6 @@ public void OnPluginStart() {
     g_OnCountDownRec[i] = false;
   }
 
-  // for test
-  // {
-  //   RegAdminCmd("sm_botreplay", Command_BotReplayTest, ADMFLAG_CHANGEMAP);
-  //   PM_AddChatAlias("treplay", "sm_botreplay");
-  //   RegAdminCmd("sm_startrecord", Command_StartRecord, ADMFLAG_CHANGEMAP);
-  //   PM_AddChatAlias("trec", "sm_startrecord");
-  //   RegAdminCmd("sm_stoprecord", Command_StopRecord, ADMFLAG_CHANGEMAP);
-  //   PM_AddChatAlias("tstoprec", "sm_stoprecord");
-  // }
 
   {
     RegAdminCmd("sm_practicemap", Command_Map, ADMFLAG_CHANGEMAP);
@@ -533,12 +522,12 @@ public void OnPluginEnd() {
 
 public void OnLibraryAdded(const char[] name) {
   g_CSUtilsLoaded = LibraryExists("csutils");
-  g_BotMimicLoaded = LibraryExists("botmimic-csgowiki");
+  g_BotMimicLoaded = LibraryExists("botmimic_fix");
 }
 
 public void OnLibraryRemoved(const char[] name) {
   g_CSUtilsLoaded = LibraryExists("csutils");
-  g_BotMimicLoaded = LibraryExists("botmimic-csgowiki");
+  g_BotMimicLoaded = LibraryExists("botmimic_fix");
 }
 
 /**
