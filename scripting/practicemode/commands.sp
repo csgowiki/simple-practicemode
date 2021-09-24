@@ -453,3 +453,26 @@ public Action Command_Break(int client, int args) {
   PM_MessageToAll("\x04已破坏所有可破坏的实体");
   return Plugin_Handled;
 }
+
+public Action Command_CopyGrenade(int client, int args) {
+  if (!IsPlayer(client) || args != 1) {
+    PM_Message(client, "Usage: .copy <id>");
+    return Plugin_Handled;
+  }
+
+  char name[MAX_NAME_LENGTH];
+  char id[GRENADE_ID_LENGTH];
+  GetCmdArg(1, id, sizeof(id));
+
+  char targetAuth[AUTH_LENGTH];
+  if (FindId(id, targetAuth, sizeof(targetAuth))) {
+    int newid = CopyGrenade(targetAuth, id, client);
+    if (newid != -1) {
+      PM_Message(client, "Copied nade to new id %d", newid);
+    } else {
+      PM_Message(client, "Could not find grenade %s from %s", newid, name);
+    }
+  }
+
+  return Plugin_Handled;
+}

@@ -255,11 +255,11 @@ public Action Command_SaveGrenade(int client, int args) {
         GrenadeTypeString(g_LastGrenadeType[client], grenadeName, sizeof(grenadeName));
         PM_Message(
             client,
-            "Saved %s throw. Use .clearthrow or .savethrow to change the grenade parameters.",
+            "已保存投掷记录：%s，输入{GREEN} .clearthrow {NORMAL}或{GREEN} .savethrow {NORMAL}来更新投掷记录的参数",
             grenadeName);
       } else {
         PM_Message(client,
-                   "No grenade throw parameters saved. Throw it and use .savethrow to save them.");
+                   "未保存投掷记录，输入{GREEN} .savethrow {NORMAL}来保存");
       }
     }
   }
@@ -275,12 +275,12 @@ public Action Command_MoveGrenade(int client, int args) {
   }
 
   if (!CanEditGrenade(client, nadeId)) {
-    PM_Message(client, "You aren't the owner of this grenade.");
+    PM_Message(client, "你不是该道具的拥有者");
     return Plugin_Handled;
   }
 
   if (GetEntityMoveType(client) == MOVETYPE_NOCLIP) {
-    PM_Message(client, "You can't move grenades while noclipped.");
+    PM_Message(client, "在玩家飞行过程中无法保存道具");
     return Plugin_Handled;
   }
 
@@ -289,6 +289,244 @@ public Action Command_MoveGrenade(int client, int args) {
   GetClientAbsOrigin(client, origin);
   GetClientEyeAngles(client, angles);
   SetClientGrenadeVectors(nadeId, origin, angles);
-  PM_Message(client, "Updated grenade position.");
+  PM_Message(client, "已更新投掷物参数");
+  return Plugin_Handled;
+}
+
+public Action Command_SaveThrow(int client, int args) {
+  if (!g_CSUtilsLoaded) {
+    PM_Message(client, "需要安装csutils插件才能使用该功能");
+    return Plugin_Handled;
+  }
+
+  int nadeId = g_CurrentSavedGrenadeId[client];
+  if (nadeId < 0) {
+    return Plugin_Handled;
+  }
+
+  if (!CanEditGrenade(client, nadeId)) {
+    PM_Message(client, "你不是该道具的拥有者");
+    return Plugin_Handled;
+  }
+
+  SetClientGrenadeParameters(nadeId, g_LastGrenadeType[client], g_LastGrenadeOrigin[client],
+                             g_LastGrenadeVelocity[client]);
+  PM_Message(client, "已更新投掷记录参数");
+  g_LastGrenadeType[client] = GrenadeType_None;
+  return Plugin_Handled;
+}
+
+public Action Command_UpdateGrenade(int client, int args) {
+  int nadeId = g_CurrentSavedGrenadeId[client];
+  if (nadeId < 0) {
+    return Plugin_Handled;
+  }
+
+  if (!CanEditGrenade(client, nadeId)) {
+    PM_Message(client, "你不是该道具的拥有者");
+    return Plugin_Handled;
+  }
+
+  if (GetEntityMoveType(client) == MOVETYPE_NOCLIP) {
+    PM_Message(client, "在玩家飞行过程中无法保存道具");
+    return Plugin_Handled;
+  }
+
+  float origin[3];
+  float angles[3];
+  GetClientAbsOrigin(client, origin);
+  GetClientEyeAngles(client, angles);
+  SetClientGrenadeVectors(nadeId, origin, angles);
+  bool updatedParameters = false;
+  if (g_CSUtilsLoaded && IsGrenade(g_LastGrenadeType[client])) {
+    updatedParameters = true;
+    SetClientGrenadeParameters(nadeId, g_LastGrenadeType[client], g_LastGrenadeOrigin[client],
+                               g_LastGrenadeVelocity[client]);
+  }
+
+  if (updatedParameters) {
+    PM_Message(client, "已更新道具位置参数和投掷记录参数");
+  } else {
+    PM_Message(client, "已更新道具位置参数");
+  }
+
+  g_LastGrenadeType[client] = GrenadeType_None;
+  return Plugin_Handled;
+}
+
+public Action Command_SetDelay(int client, int args) {
+  if (!g_CSUtilsLoaded) {
+    PM_Message(client, "你需要安装csutils插件才能使用该功能");
+    return Plugin_Handled;
+  }
+
+  if (args < 1) {
+    PM_Message(client, "用法:{GREEN} .delay <延迟秒数> {NORMAL}");
+    return Plugin_Handled;
+  }
+
+  int nadeId = g_CurrentSavedGrenadeId[client];
+  if (nadeId < 0) {
+    return Plugin_Handled;
+  }
+
+  if (!CanEditGrenade(client, nadeId)) {
+    PM_Message(client, "你不是该道具的拥有者");
+    return Plugin_Handled;
+  }
+
+  char arg[64];
+  GetCmdArgString(arg, sizeof(arg));
+  float delay = StringToFloat(arg);
+  SetClientGrenadeFloat(nadeId, "delay", delay);
+  PM_Message(client, "已保存道具id：%d（延迟%.1f秒）", nadeId, delay);
+  return Plugin_Handled;
+}
+
+public Action Command_ClearThrow(int client, int args) {
+  if (!g_CSUtilsLoaded) {
+    PM_Message(client, "你需要安装csutils插件才能使用该功能");
+    return Plugin_Handled;
+  }
+
+  int nadeId = g_CurrentSavedGrenadeId[client];
+  if (nadeId < 0) {
+    return Plugin_Handled;
+  }
+
+  if (!CanEditGrenade(client, nadeId)) {
+    PM_Message(client, "你不是该道具的拥有者");
+    return Plugin_Handled;
+  }
+
+  SetClientGrenadeParameters(nadeId, g_LastGrenadeType[client], g_LastGrenadeOrigin[client],
+                             g_LastGrenadeVelocity[client]);
+  PM_Message(client, "已清空投掷物参数");
+  return Plugin_Handled;
+}
+
+public Action Command_GrenadeDescription(int client, int args) {
+  int nadeId = g_CurrentSavedGrenadeId[client];
+  if (nadeId < 0) {
+    return Plugin_Handled;
+  }
+
+  if (!CanEditGrenade(client, nadeId)) {
+    PM_Message(client, "你不是该道具的拥有者");
+    return Plugin_Handled;
+  }
+
+  char description[GRENADE_DESCRIPTION_LENGTH];
+  GetCmdArgString(description, sizeof(description));
+
+  UpdateGrenadeDescription(nadeId, description);
+  PM_Message(client, "已添加道具描述");
+  return Plugin_Handled;
+}
+
+public Action Command_Categories(int client, int args) {
+  GiveGrenadeMenu(client, GrenadeMenuType_Categories);
+  return Plugin_Handled;
+}
+
+public Action Command_AddCategory(int client, int args) {
+  int nadeId = g_CurrentSavedGrenadeId[client];
+  if (nadeId < 0 || args < 1) {
+    return Plugin_Handled;
+  }
+
+  if (!CanEditGrenade(client, nadeId)) {
+    PM_Message(client, "你不是该道具的拥有者");
+    return Plugin_Handled;
+  }
+
+  char category[GRENADE_CATEGORY_LENGTH];
+  GetCmdArgString(category, sizeof(category));
+  AddGrenadeCategory(nadeId, category);
+
+  PM_Message(client, "已添加道具仓库");
+  return Plugin_Handled;
+}
+
+public Action Command_AddCategories(int client, int args) {
+  int nadeId = g_CurrentSavedGrenadeId[client];
+  if (nadeId < 0 || args < 1) {
+    return Plugin_Handled;
+  }
+
+  if (!CanEditGrenade(client, nadeId)) {
+    PM_Message(client, "你不是该道具的拥有者");
+    return Plugin_Handled;
+  }
+
+  char category[GRENADE_CATEGORY_LENGTH];
+  for (int i = 1; i <= args; i++) {
+    GetCmdArg(i, category, sizeof(category));
+    AddGrenadeCategory(nadeId, category);
+  }
+
+  PM_Message(client, "已添加道具仓库");
+  return Plugin_Handled;
+}
+
+public Action Command_RemoveCategory(int client, int args) {
+  int nadeId = g_CurrentSavedGrenadeId[client];
+  if (nadeId < 0) {
+    return Plugin_Handled;
+  }
+
+  if (!CanEditGrenade(client, nadeId)) {
+    PM_Message(client, "你不是该道具的拥有者");
+    return Plugin_Handled;
+  }
+
+  char category[GRENADE_CATEGORY_LENGTH];
+  GetCmdArgString(category, sizeof(category));
+
+  if (StrEqual(category, "")) {
+    PM_Message(client, "仓库名称不能为空");
+    return Plugin_Handled;
+  }
+
+  if (RemoveGrenadeCategory(nadeId, category)) {
+    PM_Message(client, "已删除道具仓库");
+  } else {
+    PM_Message(client, "未找到道具仓库");
+  }
+
+  return Plugin_Handled;
+}
+
+public Action Command_DeleteCategory(int client, int args) {
+  char category[GRENADE_CATEGORY_LENGTH];
+  GetCmdArgString(category, sizeof(category));
+
+  if (StrEqual(category, "")) {
+    PM_Message(client, "仓库名称不能为空");
+    return Plugin_Handled;
+  }
+
+  if (DeleteGrenadeCategory(client, category) > 0) {
+    PM_Message(client, "已删除道具仓库");
+  } else {
+    PM_Message(client, "未找到道具仓库");
+  }
+  return Plugin_Handled;
+}
+
+public Action Command_ClearGrenadeCategories(int client, int args) {
+  int nadeId = g_CurrentSavedGrenadeId[client];
+  if (nadeId < 0) {
+    return Plugin_Handled;
+  }
+
+  if (!CanEditGrenade(client, nadeId)) {
+    PM_Message(client, "你不是该道具的拥有者");
+    return Plugin_Handled;
+  }
+
+  SetClientGrenadeData(nadeId, "categories", "");
+  PM_Message(client, "已清除道具id：%d的仓库", nadeId);
+
   return Plugin_Handled;
 }

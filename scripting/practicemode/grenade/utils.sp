@@ -473,3 +473,87 @@ public void GetGrenadeData(const char[] auth, const char[] id, const char[] key,
     g_GrenadeLocationsKv.GoBack();
   }
 }
+
+public void SetClientGrenadeParameters(int id, GrenadeType type, const float[3] grenadeOrigin,
+                                const float[3] grenadeVelocity) {
+  char auth[AUTH_LENGTH];
+  char nadeId[GRENADE_ID_LENGTH];
+  IntToString(id, nadeId, sizeof(nadeId));
+  FindId(nadeId, auth, sizeof(auth));
+  SetGrenadeParameters(auth, nadeId, type, grenadeOrigin, grenadeVelocity);
+}
+
+public void SetClientGrenadeFloat(int id, const char[] key, float value) {
+  char auth[AUTH_LENGTH];
+  char nadeId[GRENADE_ID_LENGTH];
+  IntToString(id, nadeId, sizeof(nadeId));
+  FindId(nadeId, auth, sizeof(auth));
+  SetGrenadeFloat(auth, nadeId, key, value);
+}
+
+public void SetGrenadeParameters(const char[] auth, const char[] id, GrenadeType type,
+                          const float[3] grenadeOrigin, const float[3] grenadeVelocity) {
+  if (!IsGrenade(type)) {
+    return;
+  }
+
+  g_UpdatedGrenadeKv = true;
+  if (g_GrenadeLocationsKv.JumpToKey(auth)) {
+    if (g_GrenadeLocationsKv.JumpToKey(id)) {
+      char typeString[32];
+      GrenadeTypeString(type, typeString, sizeof(typeString));
+      g_GrenadeLocationsKv.SetString("grenadeType", typeString);
+      g_GrenadeLocationsKv.SetVector("grenadeOrigin", grenadeOrigin);
+      g_GrenadeLocationsKv.SetVector("grenadeVelocity", grenadeVelocity);
+      g_GrenadeLocationsKv.GoBack();
+    }
+    g_GrenadeLocationsKv.GoBack();
+  }
+}
+
+public void SetGrenadeFloat(const char[] auth, const char[] id, const char[] key, float value) {
+  g_UpdatedGrenadeKv = true;
+  if (g_GrenadeLocationsKv.JumpToKey(auth)) {
+    if (g_GrenadeLocationsKv.JumpToKey(id)) {
+      g_GrenadeLocationsKv.SetFloat(key, value);
+      g_GrenadeLocationsKv.GoBack();
+    }
+    g_GrenadeLocationsKv.GoBack();
+  }
+}
+
+public int CopyGrenade(const char[] ownerAuth, const char[] nadeId, int client) {
+  float origin[3];
+  float angles[3];
+  float grenadeOrigin[3];
+  float grenadeVelocity[3];
+  char grenadeTypeString[32];
+  char grenadeName[GRENADE_NAME_LENGTH];
+  char description[GRENADE_DESCRIPTION_LENGTH];
+  char categoryString[GRENADE_CATEGORY_LENGTH];
+  bool success = false;
+
+  if (g_GrenadeLocationsKv.JumpToKey(ownerAuth)) {
+    if (g_GrenadeLocationsKv.JumpToKey(nadeId)) {
+      success = true;
+      g_GrenadeLocationsKv.GetVector("origin", origin);
+      g_GrenadeLocationsKv.GetVector("angles", angles);
+      g_GrenadeLocationsKv.GetVector("grenadeOrigin", grenadeOrigin);
+      g_GrenadeLocationsKv.GetVector("grenadeVelocity", grenadeVelocity);
+      g_GrenadeLocationsKv.GetString("grenadeType", grenadeTypeString, sizeof(grenadeTypeString));
+      g_GrenadeLocationsKv.GetString("name", grenadeName, sizeof(grenadeName));
+      g_GrenadeLocationsKv.GetString("description", description, sizeof(description));
+      g_GrenadeLocationsKv.GetString("categories", categoryString, sizeof(categoryString));
+      g_GrenadeLocationsKv.GoBack();
+    }
+    g_GrenadeLocationsKv.GoBack();
+  }
+
+  if (success) {
+    return SaveGrenadeToKv(client, origin, angles, grenadeOrigin, grenadeVelocity,
+                           GrenadeTypeFromString(grenadeTypeString), grenadeName, description,
+                           categoryString);
+  } else {
+    return -1;
+  }
+}
