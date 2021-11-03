@@ -554,7 +554,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 	{
 		g_bValidTeleportCall[client] = true;
 		TeleportEntity(client, g_fInitialPosition[client], g_fInitialAngles[client], fActualVelocity);
-		Client_RemoveAllWeapons(client);
+		// Client_RemoveAllWeapons(client);
 		
 		Call_StartForward(g_hfwdOnPlayerMimicLoops);
 		Call_PushCell(client);
