@@ -108,6 +108,9 @@ char g_sRecordPath[MAXPLAYERS+1][PLATFORM_MAX_PATH];
 char g_sRecordCategory[MAXPLAYERS+1][PLATFORM_MAX_PATH];
 char g_sRecordSubDir[MAXPLAYERS+1][PLATFORM_MAX_PATH];
 
+#define WEAPONS_SLOTS_MAX 5
+int g_iWeaponCache[MAXPLAYERS+1][WEAPONS_SLOTS_MAX];
+
 StringMap g_hLoadedRecords;
 StringMap g_hLoadedRecordsAdditionalTeleport;
 StringMap g_hLoadedRecordsCategory;
@@ -1320,10 +1323,19 @@ public int StopPlayerMimic(Handle plugin, int numParams)
 	g_hLoadedRecords.GetArray(sPath, iFileHeader, sizeof(FileHeader));
 	
 	// SDKUnhook(client, SDKHook_WeaponCanSwitchTo, Hook_WeaponCanSwitchTo);
-	if (!HasWeapon(client, "weapon_knife")) {
-		FakeClientCommand(client, "give weapon_knife");
-	}	
+	// if (!HasWeapon(client, "weapon_knife")) {
+	// 	FakeClientCommand(client, "give weapon_knife");
+	// }
 
+	// if(IsClientInGame(client) && IsPlayerAlive(client) && GetClientTeam(client) >= CS_TEAM_T) {
+	// 	for (int slot = 0; slot < WEAPONS_SLOTS_MAX; ++slot) {
+	// 		if (g_iWeaponCache[client][slot] > 0)  {
+	// 			// char weaponName[64];
+	// 			// GetEdictClassname(g_iWeaponCache[client][slot], weaponName, sizeof(weaponName));
+	// 			// PrintToChatAll("slot: %d; weapon: %s", slot, weaponName);
+	// 		}
+	// 	}
+	// }
 
 	char sCategory[64];
 	g_hLoadedRecordsCategory.GetString(sPath, sCategory, sizeof(sCategory));
@@ -1891,6 +1903,11 @@ BMError PlayRecord(int client, const char[] path)
 	
 	char sCategory[64];
 	g_hLoadedRecordsCategory.GetString(path, sCategory, sizeof(sCategory));
+
+	// cache weapons
+	for (int slot = 0; slot < WEAPONS_SLOTS_MAX; ++slot) {
+		g_iWeaponCache[client][slot] = GetPlayerWeaponSlot(client, slot);
+	}
 	
 	Action result;
 	Call_StartForward(g_hfwdOnPlayerStartsMimicing);
