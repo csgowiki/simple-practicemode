@@ -183,7 +183,7 @@ native ArrayList BotMimicFix_GetLoadedRecordCategoryList();
  * @param iFileHeader	An array to store the file header in.
  * @return			BM_NoError if all went smooth, see BMError definition.
  */
-native BMError BotMimicFix_GetFileHeaders(const char[] path, any iFileHeader, int size);
+native BMError BotMimicFix_GetFileHeaders(const char[] path, any[] iFileHeader, int size);
 
 /**
  * Get the category of a record.
