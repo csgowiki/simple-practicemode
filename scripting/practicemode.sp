@@ -42,11 +42,13 @@ ArrayList g_ChatAliases;
 ArrayList g_ChatAliasesCommands;
 
 // Plugin cvars
+ConVar g_AlphabetizeNadeMenusCvar;
 ConVar g_BotRespawnTimeCvar;
 ConVar g_DryRunFreezeTimeCvar;
 ConVar g_MaxHistorySizeCvar;
 ConVar g_FastfowardRequiresZeroVolumeCvar;
 ConVar g_MaxPlacedBotsCvar;
+ConVar g_MaxGrenadesSavedCvar;
 
 // Infinite money data
 ConVar g_InfiniteMoneyCvar;
@@ -66,6 +68,7 @@ ConVar g_GrenadeTrajectoryCvar;
 ConVar g_GrenadeThicknessCvar;
 ConVar g_GrenadeTimeCvar;
 ConVar g_GrenadeSpecTimeCvar;
+ConVar g_SharedAllNadesCvar;
 
 // Other cvars.
 ConVar g_FlashEffectiveThresholdCvar;
@@ -73,9 +76,18 @@ ConVar g_TestFlashTeleportDelayCvar;
 ConVar g_VersionCvar;
 
 // Saved grenade locations data
+#define GRENADE_DESCRIPTION_LENGTH 256
+#define GRENADE_NAME_LENGTH 64
 #define GRENADE_ID_LENGTH 16
+#define GRENADE_CATEGORY_LENGTH 128
 #define AUTH_LENGTH 64
 #define AUTH_METHOD AuthId_Steam2
+char g_GrenadeLocationsFile[PLATFORM_MAX_PATH];
+KeyValues
+    g_GrenadeLocationsKv;  // Inside any global function, we expect this to be at the root level.
+int g_CurrentSavedGrenadeId[MAXPLAYERS + 1];
+bool g_UpdatedGrenadeKv = false;  // whether there has been any changed the kv structure this map
+int g_NextID = 0;
 
 // Grenade history data
 int g_GrenadeHistoryIndex[MAXPLAYERS + 1];
@@ -111,6 +123,8 @@ char g_BotSpawnWeapon[MAXPLAYERS + 1][64];
 bool g_BotCrouching[MAXPLAYERS + 1];
 int g_BotNameNumber[MAXPLAYERS + 1];
 float g_BotDeathTime[MAXPLAYERS + 1];
+
+ArrayList g_KnownNadeCategories = null;
 
 bool g_InDryRun = false;
 
@@ -159,29 +173,43 @@ enum GrenadeMenuType {
   GrenadeMenuType_MultiCategory = 6,
 };
 
+// All the data we need to call GiveGrenadeMenu for a client to reopen the .nades menu
+// where they left off. The first set are for the 'top' menus where you select a player or category.
+// The second set are for the lower level menus of selecting a single grenade from a
+// player/category menu.
+GrenadeMenuType g_ClientLastTopMenuType[MAXPLAYERS + 1];
+int g_ClientLastTopMenuPos[MAXPLAYERS + 1];
+char g_ClientLastTopMenuData[MAXPLAYERS + 1][AUTH_LENGTH];
+
+GrenadeMenuType g_ClientLastMenuType[MAXPLAYERS + 1];
+int g_ClientLastMenuPos[MAXPLAYERS + 1];
+char g_ClientLastMenuData[MAXPLAYERS + 1][AUTH_LENGTH];
+
 // Data storing spawn priorities.
 ArrayList g_CTSpawns = null;
 ArrayList g_TSpawns = null;
 KeyValues g_NamedSpawnsKv = null;
 
 enum UserSetting {
-  UserSetting_ShowAirtime = 1,
-  UserSetting_NoGrenadeTrajectory = 0
+  UserSetting_ShowAirtime,
+  UserSetting_LeaveNadeMenuOpen,
+  UserSetting_NoGrenadeTrajectory,
+  UserSetting_SwitchToNadeOnSelect,
+  UserSetting_StopsRecordingInspectKey
 };
 
-#define USERSETTING_NUMSETTINGS 2
+#define USERSETTING_NUMSETTINGS 5
 #define USERSETTING_DISPLAY_LENGTH 128
 Handle g_UserSettingCookies[USERSETTING_NUMSETTINGS];
 bool g_UserSettingDefaults[USERSETTING_NUMSETTINGS];
 char g_UserSettingDisplayName[USERSETTING_NUMSETTINGS][USERSETTING_DISPLAY_LENGTH];
 
 // Forwards
+Handle g_OnGrenadeSaved = INVALID_HANDLE;
 Handle g_OnPracticeModeSettingChanged = INVALID_HANDLE;
 Handle g_OnPracticeModeSettingsRead = INVALID_HANDLE;
 
 #define CHICKEN_MODEL "models/chicken/chicken.mdl"
-
-// #include "practicemode/botreplay_new.sp"
 
 #include "practicemode/backups.sp"
 #include "practicemode/bots.sp"
@@ -190,8 +218,13 @@ Handle g_OnPracticeModeSettingsRead = INVALID_HANDLE;
 #include "practicemode/commands.sp"
 #include "practicemode/timers_menu.sp"
 #include "practicemode/debug.sp"
-#include "practicemode/grenade_commands.sp"
-#include "practicemode/grenade_utils.sp"
+
+#include "practicemode/grenade/iterators.sp"
+#include "practicemode/grenade/commands.sp"
+#include "practicemode/grenade/filters.sp"
+#include "practicemode/grenade/utils.sp"
+#include "practicemode/grenade/menus.sp"
+
 #include "practicemode/settings_menu.sp"
 #include "practicemode/spawns.sp"
 
@@ -208,6 +241,8 @@ public Plugin myinfo = {
 public void OnPluginStart() {
   AddCommandListener(Command_TeamJoin, "jointeam");
   // Forwards
+  g_OnGrenadeSaved = CreateGlobalForward("PM_OnPracticeModeEnabled", ET_Event, Param_Cell,
+      Param_Array, Param_Array, Param_String);
   g_OnPracticeModeSettingChanged = CreateGlobalForward(
       "PM_OnPracticeModeEnabled", ET_Ignore, Param_Cell, Param_String, Param_String, Param_Cell);
   g_OnPracticeModeSettingsRead = CreateGlobalForward("PM_OnPracticeModeEnabled", ET_Ignore);
@@ -238,15 +273,6 @@ public void OnPluginStart() {
     g_OnCountDownRec[i] = false;
   }
 
-  // for test
-  // {
-  //   RegAdminCmd("sm_botreplay", Command_BotReplayTest, ADMFLAG_CHANGEMAP);
-  //   PM_AddChatAlias("treplay", "sm_botreplay");
-  //   RegAdminCmd("sm_startrecord", Command_StartRecord, ADMFLAG_CHANGEMAP);
-  //   PM_AddChatAlias("trec", "sm_startrecord");
-  //   RegAdminCmd("sm_stoprecord", Command_StopRecord, ADMFLAG_CHANGEMAP);
-  //   PM_AddChatAlias("tstoprec", "sm_stoprecord");
-  // }
 
   {
     RegAdminCmd("sm_practicemap", Command_Map, ADMFLAG_CHANGEMAP);
@@ -270,6 +296,9 @@ public void OnPluginStart() {
 
     RegConsoleCmd("sm_clearnades", Command_ClearNades);
     PM_AddChatAlias("clearnades", "sm_clearnades");
+
+    RegConsoleCmd("sm_savepos", Command_SavePos);
+    PM_AddChatAlias("savepos", "sm_savepos");
   }
 
   // Spawn commands
@@ -354,6 +383,73 @@ public void OnPluginStart() {
 
   // Saved grenade location commands
   {
+    RegConsoleCmd("sm_gotogrenade", Command_GotoNade);
+    PM_AddChatAlias("goto", "sm_gotogrenade");
+
+    RegConsoleCmd("sm_grenades", Command_Grenades);
+    PM_AddChatAlias("nades", "sm_grenades");
+    PM_AddChatAlias("grenades", "sm_grenades");
+
+    RegConsoleCmd("sm_find", Command_Find);
+    PM_AddChatAlias("find", "sm_find");
+
+    RegConsoleCmd("sm_renamegrenade", Command_RenameGrenade);
+    PM_AddChatAlias("rename", "sm_renamegrenade");
+
+    RegConsoleCmd("sm_savegrenade", Command_SaveGrenade);
+    PM_AddChatAlias("addnade", "sm_savegrenade");
+    PM_AddChatAlias("savenade", "sm_savegrenade");
+    PM_AddChatAlias("save", "sm_savegrenade");
+
+    RegConsoleCmd("sm_movegrenade", Command_MoveGrenade);
+    PM_AddChatAlias("resave", "sm_movegrenade");
+    PM_AddChatAlias("move", "sm_movegrenade");
+
+    RegConsoleCmd("sm_savethrow", Command_SaveThrow);
+    PM_AddChatAlias("savethrow", "sm_savethrow");
+    PM_AddChatAlias("updatethrow", "sm_savethrow");
+
+    RegConsoleCmd("sm_updategrenade", Command_UpdateGrenade);
+    PM_AddChatAlias("update", "sm_updategrenade");
+
+    RegConsoleCmd("sm_savedelay", Command_SetDelay);
+    PM_AddChatAlias("setdelay", "sm_savedelay");
+    PM_AddChatAlias("savedelay", "sm_savedelay");
+
+    RegConsoleCmd("sm_clearthrow", Command_ClearThrow);
+    PM_AddChatAlias("clearthrow", "sm_clearthrow");
+
+    RegConsoleCmd("sm_adddescription", Command_GrenadeDescription);
+    PM_AddChatAlias("desc", "sm_adddescription");
+
+    RegConsoleCmd("sm_deletegrenade", Command_DeleteGrenade);
+    PM_AddChatAlias("delete", "sm_deletegrenade");
+
+    RegConsoleCmd("sm_categories", Command_Categories);
+    RegConsoleCmd("sm_addcategory", Command_AddCategory);
+
+    PM_AddChatAlias("category", "sm_addcategory");
+    PM_AddChatAlias("cat", "sm_addcategory");
+    PM_AddChatAlias("cats", "sm_categories");
+    PM_AddChatAlias("addcategory", "sm_addcategory");
+    PM_AddChatAlias("addcat", "sm_addcategory");
+
+    RegConsoleCmd("sm_addcategories", Command_AddCategories);
+    PM_AddChatAlias("addcats", "sm_addcategories");
+
+    RegConsoleCmd("sm_removecategory", Command_RemoveCategory);
+    PM_AddChatAlias("removecategory", "sm_removecategory");
+    PM_AddChatAlias("removecat", "sm_removecategory");
+
+    RegConsoleCmd("sm_deletecategory", Command_DeleteCategory);
+    PM_AddChatAlias("deletecat", "sm_deletecategory");
+
+    RegConsoleCmd("sm_clearcategories", Command_ClearGrenadeCategories);
+    PM_AddChatAlias("clearcats", "sm_clearcategories");
+
+    RegConsoleCmd("sm_copygrenade", Command_CopyGrenade);
+    PM_AddChatAlias("copy", "sm_copygrenade");
+
     RegConsoleCmd("sm_respawn", Command_Respawn);
     PM_AddChatAlias("respawn", "sm_respawn");
 
@@ -385,8 +481,6 @@ public void OnPluginStart() {
     RegConsoleCmd("sm_noflash", Command_NoFlash);
     PM_AddChatAlias("noflash", "sm_noflash");
 
-    // TODO: A timer menu may be more accesible to users, as the number of timer types continues to
-    // increase...
     RegConsoleCmd("sm_timers", Command_TimersMenu);
     PM_AddChatAlias("timers", "sm_timers");
     PM_AddChatAlias("times", "sm_timers");
@@ -442,6 +536,8 @@ public void OnPluginStart() {
   }
 
   // New Plugin cvars
+  g_AlphabetizeNadeMenusCvar = CreateConVar("sm_practicemode_alphabetize_nades", "0",
+                                            "Whether menus of grenades are alphabetized by name.");
   g_BotRespawnTimeCvar = CreateConVar("sm_practicemode_bot_respawn_time", "3.0",
                                       "How long it should take bots placed with .bot to respawn");
   g_DryRunFreezeTimeCvar = CreateConVar("sm_practicemode_dry_run_freeze_time", "6",
@@ -449,6 +545,11 @@ public void OnPluginStart() {
   g_MaxHistorySizeCvar = CreateConVar(
       "sm_practicemode_max_grenade_history_size", "5",
       "Maximum number of previous grenade throws saved in temporary history per-client. The temporary history is reset every map change. Set to 0 to disable.");
+  
+  g_SharedAllNadesCvar = CreateConVar(
+      "sm_practicemode_share_all_nades", "0",
+      "When set to 1, grenades aren't per-user; they are shared amongst all users that have grenade access. Grenades are not displayed by user, but displayed in 1 grouping. Anyone on the server can edit other users' grenades.");
+
   g_MaxPlacedBotsCvar =
       CreateConVar("sm_practicemode_max_placed_bots", "10",
                    "Maximum number of static bots a single client may have placed at once.");
@@ -486,6 +587,9 @@ public void OnPluginStart() {
   g_RandomGrenadeTrajectoryCvar =
       CreateConVar("sm_grenade_trajectory_random_color", "0",
                    "Whether to randomize all grenade trajectory colors");
+  g_MaxGrenadesSavedCvar = CreateConVar(
+      "sm_practicemode_max_grenades_saved", "128",
+      "Maximum number of grenades that may be saved per-map, per-client. Set to 0 to disable.");
 
   // Patched builtin cvars
   g_GrenadeTrajectoryCvar = GetCvar("sv_grenade_trajectory");
@@ -504,6 +608,7 @@ public void OnPluginStart() {
 
   g_CTSpawns = new ArrayList();
   g_TSpawns = new ArrayList();
+  g_KnownNadeCategories = new ArrayList(GRENADE_CATEGORY_LENGTH);
 
   // Create client cookies.
   RegisterUserSetting(UserSetting_ShowAirtime, "practicemode_grenade_airtime", true,
@@ -533,12 +638,12 @@ public void OnPluginEnd() {
 
 public void OnLibraryAdded(const char[] name) {
   g_CSUtilsLoaded = LibraryExists("csutils");
-  g_BotMimicLoaded = LibraryExists("botmimic-csgowiki");
+  g_BotMimicLoaded = LibraryExists("botmimic_fix");
 }
 
 public void OnLibraryRemoved(const char[] name) {
   g_CSUtilsLoaded = LibraryExists("csutils");
-  g_BotMimicLoaded = LibraryExists("botmimic-csgowiki");
+  g_BotMimicLoaded = LibraryExists("botmimic_fix");
 }
 
 /**
@@ -593,6 +698,7 @@ public void OnMapStart() {
   char map[PLATFORM_MAX_PATH];
   GetCleanMapName(map, sizeof(map));
 
+  g_KnownNadeCategories.Clear();
   Spawns_MapStart();
 }
 

@@ -108,6 +108,9 @@ char g_sRecordPath[MAXPLAYERS+1][PLATFORM_MAX_PATH];
 char g_sRecordCategory[MAXPLAYERS+1][PLATFORM_MAX_PATH];
 char g_sRecordSubDir[MAXPLAYERS+1][PLATFORM_MAX_PATH];
 
+#define WEAPONS_SLOTS_MAX 5
+int g_iWeaponCache[MAXPLAYERS+1][WEAPONS_SLOTS_MAX];
+
 StringMap g_hLoadedRecords;
 StringMap g_hLoadedRecordsAdditionalTeleport;
 StringMap g_hLoadedRecordsCategory;
@@ -472,6 +475,8 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 		return Plugin_Continue;
 	}
 
+	// PrintToChatAll("[BotMimic] current: %d;  total: %d", g_iBotMimicTick[client], g_iBotMimicRecordTickCount[client]);
+
 	float percent = 100 * float(g_iBotMimicTick[client]) / g_iBotMimicRecordTickCount[client];
 	PrintCenterText(client, "回放进度：<font color='#0CED26'>%.1f<font color='#ffffff'>\%", percent);
 	
@@ -552,7 +557,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 	{
 		g_bValidTeleportCall[client] = true;
 		TeleportEntity(client, g_fInitialPosition[client], g_fInitialAngles[client], fActualVelocity);
-		Client_RemoveAllWeapons(client);
+		// Client_RemoveAllWeapons(client);
 		
 		Call_StartForward(g_hfwdOnPlayerMimicLoops);
 		Call_PushCell(client);
@@ -1318,10 +1323,19 @@ public int StopPlayerMimic(Handle plugin, int numParams)
 	g_hLoadedRecords.GetArray(sPath, iFileHeader, sizeof(FileHeader));
 	
 	// SDKUnhook(client, SDKHook_WeaponCanSwitchTo, Hook_WeaponCanSwitchTo);
-	if (!HasWeapon(client, "weapon_knife")) {
-		FakeClientCommand(client, "give weapon_knife");
-	}	
+	// if (!HasWeapon(client, "weapon_knife")) {
+	// 	FakeClientCommand(client, "give weapon_knife");
+	// }
 
+	// if(IsClientInGame(client) && IsPlayerAlive(client) && GetClientTeam(client) >= CS_TEAM_T) {
+	// 	for (int slot = 0; slot < WEAPONS_SLOTS_MAX; ++slot) {
+	// 		if (g_iWeaponCache[client][slot] > 0)  {
+	// 			// char weaponName[64];
+	// 			// GetEdictClassname(g_iWeaponCache[client][slot], weaponName, sizeof(weaponName));
+	// 			// PrintToChatAll("slot: %d; weapon: %s", slot, weaponName);
+	// 		}
+	// 	}
+	// }
 
 	char sCategory[64];
 	g_hLoadedRecordsCategory.GetString(sPath, sCategory, sizeof(sCategory));
@@ -1726,10 +1740,10 @@ BMError LoadRecordFromFile(const char[] path, const char[] sCategory, FileHeader
 	char[] sRecordName = new char[iNameLength+1];
 	hFile.ReadString(sRecordName, iNameLength+1, iNameLength);
 	sRecordName[iNameLength] = '\0';
-	
+
 	hFile.Read(headerInfo.FH_initialPosition, 3, 4);
 	hFile.Read(headerInfo.FH_initialAngles, 2, 4);
-	
+
 	int iTickCount;
 	hFile.ReadInt32(iTickCount);
 	
@@ -1752,10 +1766,6 @@ BMError LoadRecordFromFile(const char[] path, const char[] sCategory, FileHeader
  		delete hAT;
  		g_hLoadedRecordsAdditionalTeleport.Remove(path);
 	}
-	
-	//PrintToServer("Record %s:", sRecordName);
-	//PrintToServer("File %s:", path);
-	//PrintToServer("EndTime: %d, BinaryVersion: 0x%x, ticks: %d, initialPosition: %f,%f,%f, initialAngles: %f,%f,%f", iRecordTime, iBinaryFormatVersion, iTickCount, headerInfo[FH_initialPosition][0], headerInfo[FH_initialPosition][1], headerInfo[FH_initialPosition][2], headerInfo[FH_initialAngles][0], headerInfo[FH_initialAngles][1], headerInfo[FH_initialAngles][2]);
 	
 	if (iBookmarkCount > 0)
 	{
@@ -1893,6 +1903,11 @@ BMError PlayRecord(int client, const char[] path)
 	
 	char sCategory[64];
 	g_hLoadedRecordsCategory.GetString(path, sCategory, sizeof(sCategory));
+
+	// cache weapons
+	for (int slot = 0; slot < WEAPONS_SLOTS_MAX; ++slot) {
+		g_iWeaponCache[client][slot] = GetPlayerWeaponSlot(client, slot);
+	}
 	
 	Action result;
 	Call_StartForward(g_hfwdOnPlayerStartsMimicing);
